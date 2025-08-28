@@ -1,0 +1,5 @@
+selenium
+logging
+bs4
+pandas
+pymongo
