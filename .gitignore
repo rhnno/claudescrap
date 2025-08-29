@@ -1,0 +1,10 @@
+debug_pages
+data/*.csv
+data/*html
+debug_pages/*html
+*.csv
+*.html
+*.pkl
+model/*.csv
+model/*.pkl
+__pycache__/
