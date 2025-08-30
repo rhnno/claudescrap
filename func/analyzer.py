@@ -7,28 +7,203 @@ from selenium.common.exceptions import NoSuchElementException
 import re
 import pickle
 import os
+import yaml
 from datetime import datetime
 import time
+import csv
+import pandas as pd
+from utils import RandomUtils
+from storage import DataStorage
 
-class PaginationAnalyzer:
+
+class ConfigurableAnalyzer:
     """
-    ML-powered pagination pattern analyzer
+    ML-powered pagination pattern analyzer with YAML configuration support
     Determines if a page uses pagination, infinite scroll, or is the last page
     """
     
-    def __init__(self):
+    def __init__(self, config_path=None):
         self.model = None
-        self.vectorizer = None
+        self.vectorizer = TfidfVectorizer(max_features=100, stop_words="english")
         self.is_trained = False
         self.features = []
         self.model_path = "models/pagination_model.pkl"
         self.vectorizer_path = "models/pagination_vectorizer.pkl"
         
-        # Ensure model directory exists
-        os.makedirs("models", exist_ok=True)
+        # Store state for dynamic features
+        self._last_scroll_time = None
+        self._last_page_height = None
+        self._last_dom_count = None
+        
+        # Load configuration
+        self.config = self._load_config(config_path)
+        self._setup_paths()
         
         # Try to load existing model
         self.load_model()
+    
+    def _load_config(self, config_path):
+        """Load configuration from YAML file"""
+        default_config = {
+            'paths': {
+                'model_dir': 'models',
+                'training_data_file': 'models/training_data.csv',
+                'model_file': 'pagination_model.pkl',
+                'vectorizer_file': 'pagination_vectorizer.pkl'
+            },
+            'features': {
+                'text_analysis': {
+                    'max_tfidf_features': 100,
+                    'stop_words': 'english',
+                    'end_of_results_patterns': [
+                        r'no\s+more\s+results',
+                        r'end\s+of\s+results',
+                        r'end\s+of\s+page',
+                        r'tidak\s+ada\s+hasil\s+lagi',
+                        r'hasil\s+pencarian\s+habis',
+                        r'semua\s+produk\s+telah\s+ditampilkan',
+                        r'no\s+more\s+items',
+                        r'that\'s\s+all\s+folks'
+                    ]
+                },
+                'selectors': {
+                    'pagination_buttons': [
+                        "button[class*='pagination']",
+                        "a[class*='pagination']",
+                        ".pagination button",
+                        ".pagination a",
+                        "[aria-label*='pagination']"
+                    ],
+                    'next_buttons': [
+                        "//*[contains(text(), 'Next')]",
+                        "//*[contains(text(), 'next')]",
+                        "//*[contains(text(), '›')]",
+                        "//*[contains(text(), '→')]",
+                        "//*[contains(@aria-label, 'next')]"
+                    ],
+                    'load_more_buttons': [
+                        "//*[contains(text(), 'Load More')]",
+                        "//*[contains(text(), 'Show More')]",
+                        "//*[contains(text(), 'Muat')]",
+                        "//*[contains(text(), 'Tampilkan Lebih')]"
+                    ],
+                    'lazy_load_elements': [
+                        "[data-lazy]",
+                        "[loading='lazy']",
+                        ".lazy",
+                        ".skeleton",
+                        ".shimmer",
+                        ".loading-placeholder"
+                    ],
+                    'product_elements': [
+                        "[class*='product']",
+                        "[class*='item']",
+                        "[data-testid*='product']",
+                        ".product-card",
+                        ".item-card"
+                    ]
+                },
+                'thresholds': {
+                    'confidence_threshold': 0.7,
+                    'footer_threshold_ratio': 0.8,
+                    'scroll_bottom_threshold': 0.95,
+                    'max_infinite_scroll_rounds': 10,
+                    'consecutive_infinite_limit': 5
+                }
+            },
+            'training': {
+                'test_size': 0.2,
+                'random_state': 42,
+                'n_estimators': 100,
+                'auto_collect_samples': True,
+                'samples_per_site': 20
+            },
+            'sites': {
+                'tokopedia': {
+                    'base_url': 'https://www.tokopedia.com/search?q={query}',
+                    'language': 'indonesian',
+                    'patterns': {
+                        'page_text': ['halaman', 'produk'],
+                        'end_results': ['tidak ada hasil lagi', 'hasil pencarian habis']
+                    }
+                },
+                'amazon': {
+                    'base_url': 'https://www.amazon.com/s?k={query}',
+                    'language': 'english',
+                    'patterns': {
+                        'page_text': ['page', 'results'],
+                        'end_results': ['no more results', 'end of results']
+                    }
+                }
+            },
+            'debug': {
+                'verbose': True,
+                'save_features': True,
+                'feature_summary': True
+            }
+        }
+        
+        try:
+            if config_path and os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    loaded_config = yaml.safe_load(f)
+                # Merge with default config
+                config = self._deep_merge(default_config, loaded_config)
+                print(f"✅ Configuration loaded from {config_path}")
+            elif config_path:
+                config = default_config
+                # Create default config file
+                os.makedirs(os.path.dirname(config_path) if os.path.dirname(config_path) else '.', exist_ok=True)
+                with open(config_path, 'w', encoding='utf-8') as f:
+                    yaml.dump(default_config, f, default_flow_style=False, indent=2)
+                print(f"📄 Default configuration created at {config_path}")
+            else:
+                # No config path provided, use defaults without creating file
+                config = default_config
+                print("📄 Using default configuration (no config file specified)")
+        except Exception as e:
+            print(f"⚠️ Error loading config, using defaults: {e}")
+            config = default_config
+        
+        return config
+    
+    def _deep_merge(self, base, override):
+        """Deep merge two dictionaries"""
+        result = base.copy()
+        for key, value in override.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self._deep_merge(result[key], value)
+            else:
+                result[key] = value
+        return result
+    
+    def _setup_paths(self):
+        """Setup file paths from configuration"""
+        try:
+            model_dir = self.config['paths']['model_dir']
+            os.makedirs(model_dir, exist_ok=True)
+            
+            self.model_path = os.path.join(model_dir, self.config['paths']['model_file'])
+            self.vectorizer_path = os.path.join(model_dir, self.config['paths']['vectorizer_file'])
+            
+            # Update TF-IDF parameters from config
+            text_config = self.config['features']['text_analysis']
+            self.vectorizer = TfidfVectorizer(
+                max_features=text_config['max_tfidf_features'],
+                stop_words=text_config['stop_words']
+            )
+            
+            # Ensure all necessary directories exist
+            additional_dirs = ['data', 'data/raw_html', 'data/processed', 'logs', 'config']
+            for directory in additional_dirs:
+                os.makedirs(directory, exist_ok=True)
+                
+        except Exception as e:
+            print(f"⚠️ Error setting up paths: {e}")
+            # Fallback to default paths
+            self.model_path = "models/pagination_model.pkl"
+            self.vectorizer_path = "models/pagination_vectorizer.pkl"
+            os.makedirs("models", exist_ok=True)
     
     def analyze_page_structure(self, driver):
         """
@@ -38,7 +213,8 @@ class PaginationAnalyzer:
         features = self._extract_features(driver)
         
         if not self.is_trained:
-            print("⚠️ Model not trained, using rule-based fallback")
+            if self.config['debug']['verbose']:
+                print("⚠️ Model not trained, using rule-based fallback")
             return self._rule_based_analysis(driver)
         
         # Use ML model to predict
@@ -46,243 +222,840 @@ class PaginationAnalyzer:
         prediction = self.model.predict([feature_vector])[0]
         confidence = max(self.model.predict_proba([feature_vector])[0])
         
-        print(f"🤖 ML Prediction: {prediction} (confidence: {confidence:.2f})")
+        if self.config['debug']['verbose']:
+            print(f"🤖 ML Prediction: {prediction} (confidence: {confidence:.2f})")
         
         # Fallback to rules if confidence is low
-        if confidence < 0.7:
-            print("🔄 Low confidence, using rule-based fallback")
+        confidence_threshold = self.config['features']['thresholds']['confidence_threshold']
+        if confidence < confidence_threshold:
+            if self.config['debug']['verbose']:
+                print("🔄 Low confidence, using rule-based fallback")
             return self._rule_based_analysis(driver)
         
         return prediction
     
     def _extract_features(self, driver):
-        """Extract robust features from the page"""
+        """Extract robust features from the page using enhanced configuration"""
         features = {}
+        # Handle both old and new config structure
+        if 'features' in self.config and 'selectors' in self.config['features']:
+            selectors = self.config['features']['selectors']
+        elif 'selectors' in self.config:
+            selectors = self.config['selectors']
+        else:
+            # Fallback to default selectors
+            selectors = {
+                'pagination_buttons': ["button[class*='pagination']", ".pagination button"],
+                'next_buttons': ["//*[contains(text(), 'Next')]", "//*[contains(text(), '›')]"],
+                'load_more_buttons': ["//*[contains(text(), 'Load More')]"],
+                'lazy_load_elements': ["[data-lazy]", "[loading='lazy']"]
+            }
+        
+        # Performance monitoring
+        import time
+        start_time = time.time()
 
         def safe_count(find_fn, locator, desc):
             """Helper to safely count elements"""
             try:
                 return len(find_fn(locator))
             except Exception as e:
-                print(f"⚠️ Failed to extract {desc}: {e}")
+                if self.config['debug']['verbose']:
+                    print(f"⚠️ Failed to extract {desc}: {e}")
                 return 0
 
+        def safe_execute_script(script, desc, default=0):
+            """Helper to safely execute JavaScript"""
+            try:
+                return driver.execute_script(script)
+            except Exception as e:
+                if self.config['debug']['verbose']:
+                    print(f"⚠️ Failed to execute {desc}: {e}")
+                return default
+        
+        def extract_weighted_selectors(selector_config, feature_prefix):
+            """Extract features from weighted selector configuration"""
+            total_count = 0
+            weighted_score = 0
+            context_features = {}
+            
+            for priority_level, selectors_list in selector_config.items():
+                for selector_info in selectors_list:
+                    if isinstance(selector_info, dict):
+                        selector = selector_info.get('selector') or selector_info.get('xpath')
+                        priority = selector_info.get('priority', 1)
+                        context = selector_info.get('context', 'unknown')
+                        
+                        if selector:
+                            if 'xpath' in selector_info:
+                                count = safe_count(
+                                    lambda loc: driver.find_elements(By.XPATH, loc),
+                                    selector,
+                                    f"{feature_prefix}_{context}"
+                                )
+                            else:
+                                count = safe_count(
+                                    lambda loc: driver.find_elements(By.CSS_SELECTOR, loc),
+                                    selector,
+                                    f"{feature_prefix}_{context}"
+                                )
+                            
+                            total_count += count
+                            weighted_score += count * (priority / 10.0)
+                            context_features[f"{feature_prefix}_{context}"] = count
+                    else:
+                        # Backward compatibility with simple selectors
+                        count = safe_count(
+                            lambda loc: driver.find_elements(By.CSS_SELECTOR, loc),
+                            selector_info,
+                            f"{feature_prefix}_simple"
+                        )
+                        total_count += count
+                        weighted_score += count
+            
+            return total_count, weighted_score, context_features
+
         try:
-            # 1. Button/Link Analysis
-            features['pagination_buttons'] = safe_count(
-                lambda loc: driver.find_elements(By.CSS_SELECTOR, loc),
-                "button[class*='pagination'], a[class*='pagination'], .pagination button, .pagination a",
-                "pagination_buttons"
-            )
+            # === Enhanced Button/Link Analysis ===
+            # Check if using enhanced configuration format
+            if isinstance(selectors.get('pagination_buttons'), dict):
+                # Enhanced weighted selector extraction
+                pagination_count, pagination_weighted, pagination_contexts = extract_weighted_selectors(
+                    selectors['pagination_buttons'], 'pagination'
+                )
+                features['pagination_buttons'] = pagination_count
+                features['pagination_weighted_score'] = pagination_weighted
+                features.update(pagination_contexts)
+                
+                next_count, next_weighted, next_contexts = extract_weighted_selectors(
+                    selectors['next_buttons'], 'next'
+                )
+                features['next_button'] = next_count
+                features['next_weighted_score'] = next_weighted
+                features.update(next_contexts)
+                
+            else:
+                # Backward compatibility with simple selectors
+                pagination_count = 0
+                for selector in selectors['pagination_buttons']:
+                    pagination_count += safe_count(
+                        lambda loc: driver.find_elements(By.CSS_SELECTOR, loc),
+                        selector,
+                        f"pagination_buttons ({selector})"
+                    )
+                features['pagination_buttons'] = pagination_count
 
-            features['next_button'] = safe_count(
-                lambda loc: driver.find_elements(By.XPATH, loc),
-                "//*[contains(text(), 'Next') or contains(text(), 'next') or contains(text(), '›') or contains(text(), '→')]",
-                "next_button"
-            )
+                next_count = 0
+                for xpath in selectors['next_buttons']:
+                    next_count += safe_count(
+                        lambda loc: driver.find_elements(By.XPATH, loc),
+                        xpath,
+                        f"next_button ({xpath})"
+                    )
+                features['next_button'] = next_count
 
-            # Instead of XPath regex, check in Python
+            # Numbered buttons (improved regex matching)
             buttons = driver.find_elements(By.XPATH, "//button | //a")
             features['numbered_buttons'] = sum(
-                1 for b in buttons if re.fullmatch(r"\d+", b.text.strip())
+                1 for b in buttons 
+                if b.text.strip() and re.fullmatch(r"\d+", b.text.strip())
             )
 
-            # 2. Infinite Scroll Indicators
-            features['load_more_buttons'] = safe_count(
-                lambda loc: driver.find_elements(By.XPATH, loc),
-                "//*[contains(text(), 'Load More') or contains(text(), 'Show More') or contains(text(), 'Muat')]",
-                "load_more_buttons"
-            )
+            # Load more buttons
+            load_more_count = 0
+            for xpath in selectors['load_more_buttons']:
+                load_more_count += safe_count(
+                    lambda loc: driver.find_elements(By.XPATH, loc),
+                    xpath,
+                    f"load_more_buttons ({xpath})"
+                )
+            features['load_more_buttons'] = load_more_count
 
-            features['lazy_load_elements'] = safe_count(
-                lambda loc: driver.find_elements(By.CSS_SELECTOR, loc),
-                "[data-lazy], [loading='lazy'], .lazy, .skeleton, .shimmer",
-                "lazy_load_elements"
-            )
+            # Lazy load elements
+            lazy_count = 0
+            for selector in selectors['lazy_load_elements']:
+                lazy_count += safe_count(
+                    lambda loc: driver.find_elements(By.CSS_SELECTOR, loc),
+                    selector,
+                    f"lazy_load_elements ({selector})"
+                )
+            features['lazy_load_elements'] = lazy_count
 
-            # 3. Scroll Listeners (skip unreliable window.getEventListeners)
-            features['scroll_listeners'] = 0
-
-            # 4. Page Content Analysis
+            # === Page Analysis ===
             try:
-                page_height = driver.execute_script("return document.body.scrollHeight")
-                viewport_height = driver.execute_script("return window.innerHeight")
+                page_height = safe_execute_script("return document.body.scrollHeight", "page_height")
+                viewport_height = safe_execute_script("return window.innerHeight", "viewport_height")
                 features['height_ratio'] = page_height / viewport_height if viewport_height > 0 else 0
             except Exception as e:
-                print(f"⚠️ Failed to measure height_ratio: {e}")
+                if self.config['debug']['verbose']:
+                    print(f"⚠️ Failed to measure height_ratio: {e}")
                 features['height_ratio'] = 0
 
-            features['total_products'] = safe_count(
-                lambda loc: driver.find_elements(By.CSS_SELECTOR, loc),
-                "[class*='product'], [class*='item'], [data-testid*='product']",
-                "total_products"
-            )
+            # Product count (using configurable selectors)
+            product_count = 0
+            for selector in selectors['product_elements']:
+                product_count += safe_count(
+                    lambda loc: driver.find_elements(By.CSS_SELECTOR, loc),
+                    selector,
+                    f"product_elements ({selector})"
+                )
+            features['total_products'] = product_count
 
+            # === Enhanced Text Analysis ===
             try:
                 page_text = driver.find_element(By.TAG_NAME, "body").text.lower()
                 features['page_text_length'] = len(page_text)
+                features['page_text_raw'] = page_text
+                
+                # Enhanced pattern matching with weights
+                text_config = self.config['features'].get('text_analysis', {})
+                
+                # End of results patterns with confidence scoring
+                end_patterns = text_config.get('end_of_results_patterns', {})
+                features['end_of_results_confidence'] = 0
+                features['end_of_results_pattern_matches'] = 0
+                
+                if isinstance(end_patterns, dict):
+                    for confidence_level, patterns in end_patterns.items():
+                        for pattern_info in patterns:
+                            if isinstance(pattern_info, dict):
+                                pattern = pattern_info.get('pattern', '')
+                                weight = pattern_info.get('weight', 0.5)
+                                if re.search(pattern, page_text, re.IGNORECASE):
+                                    features['end_of_results_confidence'] = max(
+                                        features['end_of_results_confidence'], weight
+                                    )
+                                    features['end_of_results_pattern_matches'] += 1
+                                    features[f'end_pattern_{confidence_level}'] = 1
+                
+                # Pagination text patterns
+                pagination_patterns = text_config.get('pagination_text_patterns', {})
+                features['pagination_text_confidence'] = 0
+                
+                if isinstance(pagination_patterns, dict):
+                    for indicator_level, patterns in pagination_patterns.items():
+                        for pattern_info in patterns:
+                            if isinstance(pattern_info, dict):
+                                pattern = pattern_info.get('pattern', '')
+                                weight = pattern_info.get('weight', 0.5)
+                                feature_name = pattern_info.get('feature_name', 'pagination_text')
+                                
+                                if re.search(pattern, page_text, re.IGNORECASE):
+                                    features['pagination_text_confidence'] = max(
+                                        features['pagination_text_confidence'], weight
+                                    )
+                                    features[feature_name] = 1
+                
+                # Backward compatibility
                 features['contains_page_numbers'] = 1 if re.search(r'page\s+\d+|halaman\s+\d+', page_text) else 0
                 features['contains_total_results'] = 1 if re.search(r'total.*?\d+|hasil.*?\d+', page_text) else 0
+                
             except Exception as e:
-                print(f"⚠️ Failed to extract text content: {e}")
+                if self.config['debug']['verbose']:
+                    print(f"⚠️ Failed to extract text content: {e}")
                 features['page_text_length'] = 0
                 features['contains_page_numbers'] = 0
                 features['contains_total_results'] = 0
+                features['page_text_raw'] = ""
+                features['end_of_results_confidence'] = 0
+                features['pagination_text_confidence'] = 0
 
-            # 5. URL Analysis
+            # URL Analysis
             try:
                 current_url = driver.current_url.lower()
                 features['url_has_page_param'] = 1 if any(param in current_url for param in ['page=', 'p=', 'offset=']) else 0
             except Exception as e:
-                print(f"⚠️ Failed to analyze URL: {e}")
+                if self.config['debug']['verbose']:
+                    print(f"⚠️ Failed to analyze URL: {e}")
                 features['url_has_page_param'] = 0
 
-            # 6. Dynamic content
+            # Dynamic content
             features['dynamic_content'] = safe_count(
                 lambda loc: driver.find_elements(By.CSS_SELECTOR, loc),
                 "[class*='loading'], [class*='spinner'], [class*='skeleton']",
                 "dynamic_content"
             )
-        except Exception as e:
-            print(f"❌ General extraction error: {e}")
 
-        # Ensure all expected keys exist
-        expected_keys = [
+            # === Enhanced Dynamic Features ===
+            dynamic_config = self.config['features'].get('dynamic_features', {})
+            
+            # Enhanced scroll behavior tracking
+            current_height = safe_execute_script("return document.body.scrollHeight", "current_height")
+            current_time = time.time()
+            
+            if dynamic_config.get('scroll_behavior', {}).get('track_velocity', True):
+                if self._last_page_height is not None and self._last_scroll_time is not None:
+                    height_diff = current_height - self._last_page_height
+                    time_diff = current_time - self._last_scroll_time
+                    features['scroll_velocity'] = height_diff / max(0.1, time_diff)
+                    
+                    # Track acceleration if enabled
+                    if dynamic_config.get('scroll_behavior', {}).get('track_acceleration', False):
+                        if hasattr(self, '_last_scroll_velocity'):
+                            velocity_diff = features['scroll_velocity'] - self._last_scroll_velocity
+                            features['scroll_acceleration'] = velocity_diff / max(0.1, time_diff)
+                        else:
+                            features['scroll_acceleration'] = 0
+                        self._last_scroll_velocity = features['scroll_velocity']
+                else:
+                    features['scroll_velocity'] = 0
+                    features['scroll_acceleration'] = 0
+            
+            self._last_page_height = current_height
+            self._last_scroll_time = current_time
+
+            # Enhanced content analysis
+            features['content_density'] = features['total_products'] / max(1, features['page_text_length'])
+            
+            # Viewport analysis
+            viewport_height = safe_execute_script("return window.innerHeight", "viewport_height")
+            scroll_position = safe_execute_script("return window.pageYOffset", "scroll_position")
+            
+            if current_height > 0 and viewport_height > 0:
+                features['scroll_percentage'] = min(1.0, (scroll_position + viewport_height) / current_height)
+                features['content_above_fold'] = features['total_products'] * (viewport_height / current_height)
+            else:
+                features['scroll_percentage'] = 0
+                features['content_above_fold'] = 0
+
+            # Enhanced DOM monitoring
+            if dynamic_config.get('dom_monitoring', {}).get('track_node_additions', True):
+                current_dom_count = safe_execute_script(
+                    "return document.querySelectorAll('*').length", 
+                    "dom_count", 
+                    0
+                )
+                
+                if self._last_dom_count is not None:
+                    features['new_dom_nodes'] = current_dom_count - self._last_dom_count
+                    
+                    # Significant change detection
+                    threshold = dynamic_config.get('dom_monitoring', {}).get('significant_change_threshold', 10)
+                    features['significant_dom_change'] = 1 if abs(features['new_dom_nodes']) >= threshold else 0
+                else:
+                    features['new_dom_nodes'] = 0
+                    features['significant_dom_change'] = 0
+                
+                self._last_dom_count = current_dom_count
+
+            # Enhanced network activity monitoring
+            if dynamic_config.get('network_activity', {}).get('monitor_xhr_requests', True):
+                timeout_window = dynamic_config.get('network_activity', {}).get('request_timeout_window', 5000)
+                features['xhr_request_count'] = safe_execute_script(
+                    f"""
+                    var entries = performance.getEntriesByType('resource');
+                    var recent_requests = entries.filter(entry => 
+                        entry.startTime > (performance.now() - {timeout_window}) && 
+                        (entry.initiatorType === 'xmlhttprequest' || entry.initiatorType === 'fetch')
+                    );
+                    return recent_requests.length;
+                    """,
+                    "xhr_count",
+                    0
+                )
+                
+                # Track image loading for lazy loading detection
+                if dynamic_config.get('network_activity', {}).get('track_image_loads', True):
+                    features['recent_image_loads'] = safe_execute_script(
+                        f"""
+                        var entries = performance.getEntriesByType('resource');
+                        var recent_images = entries.filter(entry => 
+                            entry.startTime > (performance.now() - {timeout_window}) && 
+                            entry.initiatorType === 'img'
+                        );
+                        return recent_images.length;
+                        """,
+                        "image_loads",
+                        0
+                    )
+
+            # End of results text (using configurable patterns)
+            features['has_end_of_results_text'] = 0
+            if features['page_text_raw']:
+                end_patterns = self.config['features']['text_analysis']['end_of_results_patterns']
+                for pattern in end_patterns:
+                    if re.search(pattern, features['page_text_raw'], re.IGNORECASE):
+                        features['has_end_of_results_text'] = 1
+                        break
+
+            # Pagination at footer (using configurable threshold)
+            features['pagination_at_footer'] = 0
+            try:
+                total_page_height = safe_execute_script("return document.body.scrollHeight", "total_page_height")
+                footer_threshold_ratio = self.config['features']['thresholds']['footer_threshold_ratio']
+                footer_threshold = total_page_height * footer_threshold_ratio
+                
+                # Check all pagination selectors
+                for selector in selectors['pagination_buttons']:
+                    pagination_elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                    for element in pagination_elements:
+                        try:
+                            element_y = driver.execute_script(
+                                "return arguments[0].getBoundingClientRect().top + window.pageYOffset",
+                                element
+                            )
+                            if element_y >= footer_threshold:
+                                features['pagination_at_footer'] = 1
+                                break
+                        except:
+                            continue
+                    if features['pagination_at_footer']:
+                        break
+                        
+            except Exception as e:
+                if self.config['debug']['verbose']:
+                    print(f"⚠️ Failed to detect footer pagination: {e}")
+
+            # Average product height
+            if features['total_products'] > 0 and current_height > 0:
+                features['avg_product_height'] = current_height / features['total_products']
+            else:
+                features['avg_product_height'] = 0
+
+            # XHR Request Count
+            features['xhr_request_count'] = safe_execute_script(
+                """
+                var entries = performance.getEntriesByType('resource');
+                var recent_requests = entries.filter(entry => 
+                    entry.startTime > (performance.now() - 5000) && 
+                    (entry.initiatorType === 'xmlhttprequest' || entry.initiatorType === 'fetch')
+                );
+                return recent_requests.length;
+                """,
+                "xhr_count",
+                0
+            )
+
+            # Enhanced scroll listener detection
+            if dynamic_config.get('user_interaction', {}).get('monitor_scroll_events', True):
+                features['scroll_listeners'] = safe_execute_script(
+                    """
+                    var scrollListeners = 0;
+                    try {
+                        // Check for scroll event listeners on window and document
+                        if (window.getEventListeners) {
+                            var windowListeners = getEventListeners(window);
+                            var documentListeners = getEventListeners(document);
+                            scrollListeners = (windowListeners.scroll || []).length + 
+                                            (documentListeners.scroll || []).length;
+                        }
+                    } catch(e) {
+                        // Fallback: check for common infinite scroll libraries
+                        scrollListeners = document.querySelectorAll('[data-infinite-scroll], .infinite-scroll').length;
+                    }
+                    return scrollListeners;
+                    """,
+                    "scroll_listeners",
+                    0
+                )
+            else:
+                features['scroll_listeners'] = 0
+
+        except Exception as e:
+            if self.config['debug']['verbose']:
+                print(f"⚠️ General extraction error: {e}")
+
+        # Performance monitoring
+        extraction_time = time.time() - start_time
+        if self.config.get('debug', {}).get('performance_monitoring', {}).get('track_extraction_time', False):
+            features['_extraction_time'] = extraction_time
+            if self.config['debug']['verbose']:
+                print(f"⏱️ Feature extraction took {extraction_time:.3f}s")
+
+        # Enhanced feature completeness check
+        base_expected_keys = [
             'pagination_buttons', 'next_button', 'numbered_buttons',
             'load_more_buttons', 'lazy_load_elements', 'scroll_listeners',
             'height_ratio', 'total_products', 'page_text_length',
             'contains_page_numbers', 'contains_total_results', 'url_has_page_param',
-            'dynamic_content'
+            'dynamic_content', 'scroll_velocity', 'content_density', 'new_dom_nodes',
+            'has_end_of_results_text', 'pagination_at_footer', 'avg_product_height',
+            'xhr_request_count'
         ]
-        for key in expected_keys:
+        
+        # Add enhanced feature keys
+        enhanced_keys = [
+            'pagination_weighted_score', 'next_weighted_score',
+            'end_of_results_confidence', 'pagination_text_confidence',
+            'scroll_percentage', 'content_above_fold', 'significant_dom_change'
+        ]
+        
+        all_expected_keys = base_expected_keys + enhanced_keys
+        
+        for key in all_expected_keys:
             features.setdefault(key, 0)
+
+        # Feature quality metrics
+        features['_feature_completeness'] = sum(1 for key in all_expected_keys if features.get(key, 0) != 0) / len(all_expected_keys)
+        features['_total_features_extracted'] = len([k for k, v in features.items() if not k.startswith('_')])
 
         return features
 
     def _rule_based_analysis(self, driver):
-        """Fallback rule-based analysis"""
+        """Enhanced rule-based analysis using configuration"""
         try:
-            # Check for obvious pagination buttons
-            next_buttons = driver.find_elements(By.XPATH, 
-                "//button[contains(text(), 'Next')] | //a[contains(text(), 'Next')] | //*[contains(text(), '›')]")
+            selectors = self.config['features']['selectors']
+            thresholds = self.config['features']['thresholds']
             
-            if next_buttons and any(btn.is_enabled() for btn in next_buttons):
+            # Check for pagination buttons (using configurable selectors)
+            has_pagination = False
+            for selector in selectors['pagination_buttons']:
+                buttons = driver.find_elements(By.CSS_SELECTOR, selector)
+                if buttons and any(btn.is_displayed() and btn.is_enabled() for btn in buttons):
+                    has_pagination = True
+                    break
+            
+            # Check for next buttons
+            if not has_pagination:
+                for xpath in selectors['next_buttons']:
+                    next_buttons = driver.find_elements(By.XPATH, xpath)
+                    if next_buttons and any(btn.is_enabled() for btn in next_buttons):
+                        has_pagination = True
+                        break
+            
+            if has_pagination:
                 return 'pagination'
             
-            # Check for load more buttons
-            load_more = driver.find_elements(By.XPATH, 
-                "//*[contains(text(), 'Load More') or contains(text(), 'Show More')]")
+            # Check for infinite scroll indicators
+            has_infinite_scroll = False
+            for xpath in selectors['load_more_buttons']:
+                load_more = driver.find_elements(By.XPATH, xpath)
+                if load_more:
+                    has_infinite_scroll = True
+                    break
             
-            if load_more:
+            if not has_infinite_scroll:
+                for selector in selectors['lazy_load_elements']:
+                    lazy_elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                    if lazy_elements:
+                        has_infinite_scroll = True
+                        break
+            
+            if has_infinite_scroll:
                 return 'infinite_scroll'
             
-            # Check if we can scroll more
+            # Check for end of results text
+            try:
+                page_text = driver.find_element(By.TAG_NAME, "body").text.lower()
+                end_patterns = self.config['features']['text_analysis']['end_of_results_patterns']
+                for pattern in end_patterns:
+                    if re.search(pattern, page_text, re.IGNORECASE):
+                        return 'last_page'
+            except:
+                pass
+            
+            # Check scroll position
             current_height = driver.execute_script("return window.pageYOffset + window.innerHeight")
             total_height = driver.execute_script("return document.body.scrollHeight")
+            scroll_threshold = thresholds['scroll_bottom_threshold']
             
-            if current_height >= total_height * 0.95:  # Near bottom
+            if current_height >= total_height * scroll_threshold:
                 return 'last_page'
             
             return 'infinite_scroll'  # Default assumption
             
         except Exception as e:
-            print(f"❌ Rule-based analysis error: {e}")
-            return 'last_page'  # Conservative fallback
+            if self.config['debug']['verbose']:
+                print(f"⚠️ Rule-based analysis error: {e}")
+            return 'last_page'
     
     def collect_training_data(self, driver, actual_type, site_name="unknown", extra_features=None):
-        """Collect training data for the ML model (supports extra dynamic features)"""
+        """Enhanced training data collection with site-specific features and weighting"""
         features = self._extract_features(driver)
 
-        # Merge extra dynamic features if provided
+        # Merge extra dynamic features
         if extra_features:
             features.update(extra_features)
 
-        # Add metadata
+        # Enhanced site-specific feature processing
+        if site_name in self.config['sites']:
+            site_config = self.config['sites'][site_name]
+            features['site_language'] = site_config.get('language', 'unknown')
+            features['site_encoding'] = site_config.get('encoding', 'utf-8')
+            
+            # Apply site-specific feature weights
+            feature_weights = site_config.get('feature_weights', {})
+            for feature_name, weight in feature_weights.items():
+                if feature_name in features and isinstance(features[feature_name], (int, float)):
+                    features[f'{feature_name}_weighted'] = features[feature_name] * weight
+            
+            # Enhanced pattern matching with regex
+            page_text = features.get('page_text_raw', '')
+            if page_text:
+                site_patterns = site_config.get('patterns', {})
+                for pattern_type, patterns in site_patterns.items():
+                    feature_name = f'site_{pattern_type}_match'
+                    features[feature_name] = 0
+                    features[f'{feature_name}_count'] = 0
+                    features[f'{feature_name}_confidence'] = 0
+                    
+                    match_count = 0
+                    max_confidence = 0
+                    
+                    for pattern in patterns:
+                        # Support both simple string matching and regex
+                        if pattern.startswith('\\') or '(' in pattern:
+                            # Regex pattern
+                            matches = re.findall(pattern, page_text, re.IGNORECASE)
+                            if matches:
+                                match_count += len(matches)
+                                max_confidence = max(max_confidence, 0.9)
+                                features[feature_name] = 1
+                        else:
+                            # Simple string matching
+                            if pattern.lower() in page_text:
+                                match_count += 1
+                                max_confidence = max(max_confidence, 0.7)
+                                features[feature_name] = 1
+                    
+                    features[f'{feature_name}_count'] = match_count
+                    features[f'{feature_name}_confidence'] = max_confidence
+            
+            # Custom selector analysis for site
+            custom_selectors = site_config.get('custom_selectors', {})
+            for selector_name, selector in custom_selectors.items():
+                try:
+                    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                    features[f'site_custom_{selector_name}'] = len(elements)
+                    features[f'site_custom_{selector_name}_present'] = 1 if elements else 0
+                except:
+                    features[f'site_custom_{selector_name}'] = 0
+                    features[f'site_custom_{selector_name}_present'] = 0
+
+        # Enhanced metadata
         features['site_name'] = site_name
         features['timestamp'] = datetime.now().isoformat()
         features['actual_type'] = actual_type
         features['url'] = driver.current_url
+        features['user_agent'] = driver.execute_script("return navigator.userAgent") if driver else "unknown"
+        features['viewport_width'] = driver.execute_script("return window.innerWidth") if driver else 0
+        features['viewport_height'] = driver.execute_script("return window.innerHeight") if driver else 0
+        
+        # Data quality indicators
+        features['_data_quality_score'] = self._calculate_data_quality_score(features)
+        features['_collection_method'] = 'enhanced_automated'
 
-        # Save to training data file
+        # Save training sample with enhanced format
         self._save_training_sample(features)
-        print(f"📊 Training data collected: {actual_type} (extra: {extra_features})")
-
-
-    def train_model(self, training_data_file="models/training_data.csv"):
-        """Train the ML model on collected data"""
-        try:
-            import pandas as pd
+        
+        # Enhanced logging
+        if self.config['debug']['verbose']:
+            extra_info = f" (extra: {len(extra_features)} features)" if extra_features else ""
+            quality_score = features.get('_data_quality_score', 0)
+            print(f"📊 Training data collected: {actual_type}{extra_info} (quality: {quality_score:.2f})")
             
-            # Load training data
+            if self.config['debug'].get('feature_summary', False):
+                feature_count = len([k for k, v in features.items() if not k.startswith('_')])
+                print(f"   📈 {feature_count} features extracted, completeness: {features.get('_feature_completeness', 0):.2f}")
+    
+    def _calculate_data_quality_score(self, features):
+        """Calculate a quality score for the collected data"""
+        score = 0.0
+        
+        # Basic feature presence (40% of score)
+        basic_features = ['pagination_buttons', 'next_button', 'total_products', 'page_text_length']
+        present_basic = sum(1 for f in basic_features if features.get(f, 0) > 0)
+        score += (present_basic / len(basic_features)) * 0.4
+        
+        # Text content quality (30% of score)
+        text_length = features.get('page_text_length', 0)
+        if text_length > 1000:
+            score += 0.3
+        elif text_length > 500:
+            score += 0.2
+        elif text_length > 100:
+            score += 0.1
+        
+        # Feature diversity (20% of score)
+        non_zero_features = len([k for k, v in features.items() if not k.startswith('_') and v != 0])
+        if non_zero_features > 20:
+            score += 0.2
+        elif non_zero_features > 15:
+            score += 0.15
+        elif non_zero_features > 10:
+            score += 0.1
+        
+        # Site-specific features (10% of score)
+        site_features = len([k for k in features.keys() if k.startswith('site_')])
+        if site_features > 5:
+            score += 0.1
+        elif site_features > 2:
+            score += 0.05
+        
+        return min(1.0, score)
+
+    def train_model(self, training_data_file=None):
+        """Train the ML model with configurable parameters"""
+        if training_data_file is None:
+            training_data_file = self.config['paths']['training_data_file']
+            
+        try:
             if not os.path.exists(training_data_file):
-                print("❌ No training data found. Collect some data first!")
+                print("⚠️ No training data found. Collect some data first!")
                 return False
             
             df = pd.read_csv(training_data_file)
-            
-            # Prepare features
-            feature_columns = [
+            print(f"📚 Loaded {len(df)} training samples")
+
+            # TF-IDF Processing
+            if 'page_text_raw' in df.columns:
+                text_corpus = df['page_text_raw'].fillna("")
+                text_config = self.config['features']['text_analysis']
+                
+                self.vectorizer = TfidfVectorizer(
+                    max_features=text_config['max_tfidf_features'],
+                    stop_words=text_config['stop_words']
+                )
+                
+                tfidf_matrix = self.vectorizer.fit_transform(text_corpus)
+                tfidf_df = pd.DataFrame(
+                    tfidf_matrix.toarray(), 
+                    columns=[f"tfidf_{w}" for w in self.vectorizer.get_feature_names_out()]
+                )
+                
+                df = pd.concat([df.reset_index(drop=True), tfidf_df.reset_index(drop=True)], axis=1)
+
+                # Save vectorizer
+                with open(self.vectorizer_path, "wb") as f:
+                    pickle.dump(self.vectorizer, f)
+                print(f"💾 TF-IDF vectorizer saved to {self.vectorizer_path}")
+
+            # Feature selection with site-specific features
+            base_features = [
                 'pagination_buttons', 'next_button', 'numbered_buttons',
                 'load_more_buttons', 'lazy_load_elements', 'scroll_listeners',
                 'height_ratio', 'total_products', 'page_text_length',
                 'contains_page_numbers', 'contains_total_results', 'url_has_page_param',
-                'dynamic_content',
-                # ✅ New dynamic features
-                'scroll_round', 'new_items_loaded'
+                'dynamic_content', 'scroll_velocity', 'content_density', 'new_dom_nodes',
+                'has_end_of_results_text', 'pagination_at_footer', 'avg_product_height',
+                'xhr_request_count'
             ]
-
             
+            # Add dynamic training features
+            dynamic_features = [col for col in df.columns if col.startswith(('scroll_round', 'new_items_loaded'))]
+            
+            # Add site-specific features
+            site_features = [col for col in df.columns if col.startswith('site_')]
+            
+            # Add TF-IDF features
+            tfidf_features = [col for col in df.columns if col.startswith("tfidf_")]
+
+            feature_columns = base_features + dynamic_features + site_features + tfidf_features
+
+            # Ensure missing columns are added as 0
+            for col in feature_columns:
+                if col not in df.columns:
+                    df[col] = 0
+
             X = df[feature_columns]
             y = df['actual_type']
-            
-            # Split data
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-            
+
+            # Training configuration
+            train_config = self.config['training']
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, 
+                test_size=train_config['test_size'], 
+                random_state=train_config['random_state']
+            )
+
             # Train model
-            self.model = RandomForestClassifier(n_estimators=100, random_state=42)
+            self.model = RandomForestClassifier(
+                n_estimators=train_config['n_estimators'], 
+                random_state=train_config['random_state']
+            )
             self.model.fit(X_train, y_train)
-            
+
             # Evaluate
             accuracy = self.model.score(X_test, y_test)
             print(f"🎯 Model accuracy: {accuracy:.2f}")
-            
+
+            # Feature importance analysis
+            if self.config['debug']['feature_summary']:
+                self._print_feature_importance(feature_columns)
+
             # Save model
             self.save_model()
             self.is_trained = True
-            
             return True
-            
+
         except Exception as e:
-            print(f"❌ Training error: {e}")
+            print(f"⚠️ Training error: {e}")
+            import traceback
+            traceback.print_exc()
             return False
+
+    def _print_feature_importance(self, feature_columns):
+        """Print top feature importances"""
+        if self.model and hasattr(self.model, 'feature_importances_'):
+            importances = self.model.feature_importances_
+            feature_importance = list(zip(feature_columns, importances))
+            feature_importance.sort(key=lambda x: x[1], reverse=True)
+            
+            print("\n📈 Top 10 Feature Importances:")
+            print("-" * 40)
+            for feature, importance in feature_importance[:10]:
+                print(f"{feature}: {importance:.4f}")
     
     def _features_to_vector(self, features):
-        """Convert features dict to numpy array"""
-        feature_order = [
+        """Convert features dict to numpy array for prediction"""
+        base_features = [
             'pagination_buttons', 'next_button', 'numbered_buttons',
             'load_more_buttons', 'lazy_load_elements', 'scroll_listeners',
             'height_ratio', 'total_products', 'page_text_length',
             'contains_page_numbers', 'contains_total_results', 'url_has_page_param',
-            'dynamic_content'
+            'dynamic_content', 'scroll_velocity', 'content_density', 'new_dom_nodes',
+            'has_end_of_results_text', 'pagination_at_footer', 'avg_product_height',
+            'xhr_request_count'
         ]
         
-        return np.array([features.get(key, 0) for key in feature_order])
+        # Add dynamic features if they exist
+        dynamic_features = [key for key in features.keys() if key.startswith(('scroll_round', 'new_items_loaded'))]
+        
+        # Add site-specific features if they exist
+        site_features = [key for key in features.keys() if key.startswith('site_')]
+        
+        # Combine all feature types
+        all_features = base_features + dynamic_features + site_features
+        
+        # Get text features if vectorizer is available
+        text_features = []
+        if self.vectorizer and 'page_text_raw' in features:
+            try:
+                tfidf_vector = self.vectorizer.transform([features['page_text_raw']])
+                text_features = tfidf_vector.toarray()[0].tolist()
+            except Exception as e:
+                if self.config['debug']['verbose']:
+                    print(f"⚠️ TF-IDF transform failed: {e}")
+                text_features = []
+        
+        # Build feature vector
+        feature_vector = [features.get(key, 0) for key in all_features]
+        
+        # Add TF-IDF features
+        if text_features:
+            feature_vector.extend(text_features)
+        
+        return np.array(feature_vector)
     
     def _save_training_sample(self, features):
-        """Save a single training sample"""
-        import csv
-        
-        file_path = "models/training_data.csv"
+        """Save a single training sample with proper encoding"""
+        file_path = self.config['paths']['training_data_file']
         file_exists = os.path.exists(file_path)
         
-        with open(file_path, 'a', newline='', encoding='utf-8') as f:
-            fieldnames = list(features.keys())
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            
-            if not file_exists:
-                writer.writeheader()
-            
-            writer.writerow(features)
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        try:
+            with open(file_path, 'a', newline='', encoding='utf-8') as f:
+                fieldnames = list(features.keys())
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                
+                if not file_exists:
+                    writer.writeheader()
+                
+                writer.writerow(features)
+        except Exception as e:
+            print(f"⚠️ Error saving training sample: {e}")
     
     def save_model(self):
         """Save trained model to disk"""
@@ -291,21 +1064,57 @@ class PaginationAnalyzer:
                 pickle.dump(self.model, f)
             print(f"💾 Model saved to {self.model_path}")
         except Exception as e:
-            print(f"❌ Error saving model: {e}")
+            print(f"⚠️ Error saving model: {e}")
     
     def load_model(self):
-        """Load trained model from disk"""
+        """Load trained model and vectorizer from disk"""
         try:
             if os.path.exists(self.model_path):
                 with open(self.model_path, 'rb') as f:
                     self.model = pickle.load(f)
                 self.is_trained = True
                 print(f"✅ Model loaded from {self.model_path}")
+
+            if os.path.exists(self.vectorizer_path):
+                with open(self.vectorizer_path, 'rb') as f:
+                    self.vectorizer = pickle.load(f)
+                print(f"✅ Vectorizer loaded from {self.vectorizer_path}")
                 return True
+
         except Exception as e:
-            print(f"❌ Error loading model: {e}")
+            print(f"⚠️ Error loading model/vectorizer: {e}")
+            self.is_trained = False
+
+    def reset_state(self):
+        """Reset internal state for new scraping session"""
+        self._last_scroll_time = None
+        self._last_page_height = None
+        self._last_dom_count = None
+        print("🔄 Analyzer state reset")
+
+    def get_feature_summary(self, driver):
+        """Get a summary of extracted features for debugging"""
+        features = self._extract_features(driver)
         
-        return False
+        print("\n📊 Feature Summary:")
+        print("-" * 50)
+        
+        # Group features by category
+        categories = {
+            "Navigation": ['pagination_buttons', 'next_button', 'numbered_buttons', 'pagination_at_footer'],
+            "Infinite Scroll": ['load_more_buttons', 'lazy_load_elements', 'scroll_velocity', 'xhr_request_count'],
+            "Content": ['total_products', 'content_density', 'avg_product_height', 'new_dom_nodes'],
+            "Page Analysis": ['height_ratio', 'page_text_length', 'has_end_of_results_text'],
+            "Metadata": ['contains_page_numbers', 'contains_total_results', 'url_has_page_param', 'dynamic_content']
+        }
+        
+        for category, feature_list in categories.items():
+            print(f"\n{category}:")
+            for feature in feature_list:
+                value = features.get(feature, 0)
+                print(f"  {feature}: {value}")
+        
+        return features
 
 # Enhanced Scraper with ML Analysis
 class SmartTokopediaScraper:
@@ -313,13 +1122,16 @@ class SmartTokopediaScraper:
     
     def __init__(self, browser_manager):
         self.browser = browser_manager
-        self.analyzer = PaginationAnalyzer()
-        self.storage = None  # Import from your storage module
+        self.analyzer = ConfigurableAnalyzer()
+        self.storage = DataStorage()  # Import from your storage module
     
     def smart_scrape(self, query, max_pages=50):
         """Intelligent scraping with ML pagination detection"""
         results = []
         url = f"https://www.tokopedia.com/search?st=product&q={query}"
+        
+        # Reset analyzer state for new session
+        self.analyzer.reset_state()
         
         self.browser.navigate_to(url)
         
@@ -375,17 +1187,22 @@ class SmartTokopediaScraper:
         
         return results
 
-    
     def _handle_pagination(self):
         """Handle traditional pagination"""
         next_selectors = [
             "button[aria-label*='next'], button[aria-label*='Next']",
             "a[aria-label*='next'], a[aria-label*='Next']", 
-            "button[contains(text(),'›')],"
-            "a[contains(text(),'›')]",
             ".pagination .next:not(.disabled)",
             "button[class*='next']:not([disabled])",
             "a[class*='next']:not([disabled])"
+        ]
+        
+        # XPath selectors for text-based matching
+        next_xpaths = [
+            "//button[contains(text(),'›')]",
+            "//a[contains(text(),'›')]",
+            "//button[contains(text(),'Next')]",
+            "//a[contains(text(),'Next')]"
         ]
         
         for selector in next_selectors:
@@ -398,53 +1215,68 @@ class SmartTokopediaScraper:
             except:
                 continue
         
+        # Try XPath selectors
+        for xpath in next_xpaths:
+            try:
+                elements = self.browser.driver.find_elements(By.XPATH, xpath)
+                for element in elements:
+                    if element.is_displayed() and element.is_enabled():
+                        element.click()
+                        return True
+            except:
+                continue
+        
         return False
     
-    def _handle_infinite_scroll(self, max_rounds=10, delay_range=(1, 3)):
+    def _handle_infinite_scroll(self, max_rounds=10, delay_range=(0.5, 1.5)):
         """
         Handle infinite scroll properly by scrolling all the way down repeatedly
-        and collect training data per round.
+        and collect training data per round with enhanced features.
         """
         import random, time
 
         last_height = self.browser.driver.execute_script("return document.body.scrollHeight")
+        start_time = time.time()
 
         for round_num in range(1, max_rounds + 1):
-            print(f"🔽 Infinite scroll round {round_num}/{max_rounds}")
+            print(f"📽 Infinite scroll round {round_num}/{max_rounds}")
 
             # Scroll to bottom
+            scroll_start_time = time.time()
             self.browser.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(random.uniform(*delay_range))
+            scroll_end_time = time.time()
 
             # Measure new height
             new_height = self.browser.driver.execute_script("return document.body.scrollHeight")
             new_items_loaded = new_height - last_height
+            scroll_time = scroll_end_time - scroll_start_time
 
-            # ✅ Add dynamic features
+            # ✅ Enhanced dynamic features
             dynamic_features = {
                 "scroll_round": round_num,
-                "new_items_loaded": new_items_loaded
+                "new_items_loaded": new_items_loaded,
+                "scroll_time_taken": scroll_time,
+                "cumulative_scroll_time": scroll_end_time - start_time
             }
 
-            # Collect training data with dynamic info
+            # Collect training data with enhanced dynamic info
             self.analyzer.collect_training_data(
                 self.browser.driver,
                 actual_type="infinite_scroll",
                 site_name="tokopedia",
-                extra_features=dynamic_features  # 👈 we’ll extend collect_training_data
+                extra_features=dynamic_features
             )
 
             if new_height == last_height:
                 print("🏁 Reached the end of infinite scroll (no new content).")
                 return False
             else:
-                print(f"✅ New content loaded (+{new_items_loaded}px)")
+                print(f"✅ New content loaded (+{new_items_loaded}px in {scroll_time:.2f}s)")
                 last_height = new_height
 
         return True
 
-
-    
     def _save_page(self, query, page_num):
         """Save current page HTML safely"""
         try:
@@ -460,7 +1292,7 @@ class SmartTokopediaScraper:
             try:
                 html = self.browser.driver.page_source
             except Exception as e:
-                print(f"❌ Could not fetch page source: {e}")
+                print(f"⚠ Could not fetch page source: {e}")
                 return None
 
             with open(filename, "w", encoding="utf-8") as f:
@@ -470,12 +1302,11 @@ class SmartTokopediaScraper:
             return filename
 
         except Exception as e:
-            print(f"❌ Error saving page {page_num}: {e}")
+            print(f"⚠ Error saving page {page_num}: {e}")
             return None
-
     
-    def _random_delay(self, min_sec=2, max_sec=6):
-        """Random delay between actions"""
+    def _random_delay(self, min_sec=0.5, max_sec=2):
+        """Random delay between actions with reduced timing"""
         import random
         import time
         delay = random.uniform(min_sec, max_sec)
@@ -488,117 +1319,198 @@ class SmartTokopediaScraper:
         
         if success:
             print("✅ Model training completed!")
+            # Show feature summary for the last analyzed page
+            if hasattr(self, 'browser') and self.browser.driver:
+                self.analyzer.get_feature_summary(self.browser.driver)
         else:
-            print("❌ Model training failed")
+            print("⚠ Model training failed")
         
         return success
 
 # Training Data Collector
+
 class TrainingDataCollector:
-    """Helper class to collect training data for the ML model"""
+    """Helper class to collect training data for the ML model with YAML config support"""
     
-    def __init__(self, analyzer):
+    def __init__(self, analyzer, config_path="config/analyzer.yaml"):
         self.analyzer = analyzer
-        self.sites = {
-            'tokopedia': 'https://www.tokopedia.com/search?q=laptop',
-            'amazon': 'https://www.amazon.com/s?k=laptop',
-            'youtube': 'https://www.youtube.com/results?search_query=cina'
+        self.config = self._load_config(config_path)
+
+    def _load_config(self, config_path):
+        """Load YAML config for sites and labeling rules"""
+        default_config = {
+            'paths': {
+                'model_dir': 'models',
+                'training_data_file': 'models/training_data.csv',
+                'model_file': 'models/pagination_model.pkl',
+                'vectorizer_file': 'models/pagination_vectorizer.pkl'
+            },
+            'features': {
+                'selectors': {
+                    'pagination_buttons': [
+                        "button[class*='pagination']",
+                        "a[class*='pagination']",
+                        ".pagination button",
+                        ".pagination a"
+                    ],
+                    'next_buttons': [
+                        "//*[contains(text(), 'Next')]",
+                        "//*[contains(text(), 'next')]",
+                        "//*[contains(text(), '›')]"
+                    ],
+                    'load_more_buttons': [
+                        "//*[contains(text(), 'Load More')]",
+                        "//*[contains(text(), 'Show More')]"
+                    ],
+                    'lazy_load_elements': [
+                        "[data-lazy]",
+                        "[loading='lazy']",
+                        ".lazy"
+                    ]
+                },
+                'thresholds': {
+                    'confidence_threshold': 0.7,
+                    'footer_threshold_ratio': 0.8,
+                    'scroll_bottom_threshold': 0.95
+                }
+            },
+            'sites': {
+                'tokopedia': {
+                    'url': 'https://www.tokopedia.com/search?q=laptop',
+                    'language': 'indonesian'
+                },
+                'amazon': {
+                    'url': 'https://www.amazon.com/s?k=laptop',
+                    'language': 'english'
+                }
+            },
+            'training': {
+                'test_size': 0.2,
+                'random_state': 42,
+                'n_estimators': 100,
+                'max_depth': 10
+            },
+            'debug': {
+                'verbose': True,
+                'save_features': True
+            },
+            'heuristics': {
+                'url_pagination_params': ['page=', 'p=', 'offset='],
+                'scroll_height_ratio': 2.0,
+                'text_pagination_keywords': ['page', 'next', 'previous']
+            }
         }
-    
+
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                loaded = yaml.safe_load(f)
+            # merge with defaults (so missing keys don’t break things)
+            return {**default_config, **(loaded or {})}
+        else:
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            with open(config_path, "w", encoding="utf-8") as f:
+                yaml.dump(default_config, f, indent=2)
+            return default_config
+
     def collect_diverse_data(self, browser_manager, samples_per_site=20):
         """Collect training data from multiple sites"""
         print("📊 Starting training data collection...")
-        
-        for site_name, base_url in self.sites.items():
+
+        for site_name, site_info in self.config["sites"].items():
+            base_url = site_info["url"]
             print(f"\n🌐 Collecting data from {site_name}")
-            
+
+            self.analyzer.reset_state()
+
             try:
                 browser_manager.navigate_to(base_url)
-                
+
                 for i in range(samples_per_site):
-                    # Manual labeling prompt (in real scenario)
                     print(f"\n📄 Page {i+1} on {site_name}")
                     print("Current URL:", browser_manager.driver.current_url)
-                    
-                    # In practice, you would manually check and label
-                    # For demo, we'll use rule-based labeling
+
                     actual_type = self._auto_label_page(browser_manager.driver)
-                    
-                    # Collect features
+
+                    features_summary = self.analyzer.get_feature_summary(browser_manager.driver)
+
                     self.analyzer.collect_training_data(
-                        browser_manager.driver, 
-                        actual_type, 
+                        browser_manager.driver,
+                        actual_type,
                         site_name
                     )
-                    
-                    # Try to navigate to next page for variety
+
                     self._navigate_next_page(browser_manager.driver)
-                    
+
             except Exception as e:
-                print(f"❌ Error collecting data from {site_name}: {e}")
-    
+                print(f"⚠ Error collecting data from {site_name}: {e}")
+
     def _auto_label_page(self, driver):
-        """Automatically label page type with richer rules"""
+        """Automatically label page type using YAML-configured rules"""
         try:
-            # 1. Check for traditional pagination controls
-            pagination_buttons = driver.find_elements(
-                By.CSS_SELECTOR,
-                "button[class*='pagination'], a[class*='pagination'], .pagination button, .pagination a"
-            )
-            next_buttons = driver.find_elements(
-                By.XPATH,
-                "//*[contains(text(), 'Next') or contains(text(), '›') or contains(text(), '→')]"
-            )
+            selectors = self.config["selectors"]
+            heuristics = self.config["heuristics"]
 
-            if pagination_buttons or next_buttons:
-                return "pagination"
+            # 1. Pagination buttons
+            for selector in selectors["pagination_buttons"]:
+                if driver.find_elements(By.CSS_SELECTOR, selector):
+                    return "pagination"
+            for xpath in selectors["next_buttons"]:
+                if driver.find_elements(By.XPATH, xpath):
+                    return "pagination"
 
-            # 2. Look for infinite scroll indicators
-            load_more = driver.find_elements(
-                By.XPATH,
-                "//*[contains(text(), 'Load More') or contains(text(), 'Show More') or contains(text(), 'Muat')]"
-            )
-            lazy_elements = driver.find_elements(
-                By.CSS_SELECTOR,
-                "[data-lazy], [loading='lazy'], .lazy, .skeleton, .shimmer"
-            )
+            # 2. Infinite scroll indicators
+            for xpath in selectors["load_more_buttons"]:
+                if driver.find_elements(By.XPATH, xpath):
+                    return "infinite_scroll"
+            for selector in selectors["lazy_load_elements"]:
+                if driver.find_elements(By.CSS_SELECTOR, selector):
+                    return "infinite_scroll"
 
-            if load_more or lazy_elements:
-                return "infinite_scroll"
-
-            # 3. URL pattern check (common for pagination)
+            # 3. URL pattern
             current_url = driver.current_url.lower()
-            if any(param in current_url for param in ["page=", "p=", "offset="]):
+            if any(param in current_url for param in heuristics["url_pagination_params"]):
                 return "pagination"
 
-            # 4. Scroll height check (heuristic for infinite scroll vs last page)
+            # 4. Scroll height check
             page_height = driver.execute_script("return document.body.scrollHeight")
             viewport_height = driver.execute_script("return window.innerHeight")
-            if page_height > viewport_height * 2:  # very tall page
+            if page_height > viewport_height * heuristics["scroll_height_ratio"]:
                 return "infinite_scroll"
 
-            # 5. Text cues in body
+            # 5. Text cues
             body_text = driver.find_element(By.TAG_NAME, "body").text.lower()
-            if "page" in body_text or "halaman" in body_text:  # English/Indonesian
+            if any(keyword in body_text for keyword in heuristics["text_pagination_keywords"]):
                 return "pagination"
 
-            # Default assumption
             return "last_page"
 
         except Exception as e:
             print(f"⚠️ Auto-labeling failed: {e}")
             return "last_page"
 
-    
     def _navigate_next_page(self, driver):
-        """Try to navigate to next page"""
+        """Try to move to next page (best-effort)"""
+        
         try:
-            next_btn = driver.find_element(By.XPATH, "//*[contains(text(), 'Next') or contains(text(), '›')]")
-            if next_btn.is_enabled():
-                next_btn.click()
-                time.sleep(3)
-        except:
-            pass
+            # Try CSS selectors first
+            for selector in self.config["selectors"]["pagination_buttons"]:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                for element in elements:
+                    if element.is_displayed() and element.is_enabled():
+                        element.click()
+                        return True
+            
+            # Try XPath selectors
+            for xpath in self.config["selectors"]["next_buttons"]:
+                elements = driver.find_elements(By.XPATH, xpath)
+                for element in elements:
+                    if element.is_displayed() and element.is_enabled():
+                        element.click()
+                        return True
+            
+            return False
+        except Exception:
+            return False
 
 # Usage Example
 def main_with_ml():
@@ -611,7 +1523,7 @@ def main_with_ml():
     
     try:
         # Option 1: Train model first (do this once)
-        collector = TrainingDataCollector(PaginationAnalyzer())
+        collector = TrainingDataCollector(ConfigurableAnalyzer())
         collector.collect_diverse_data(browser, samples_per_site=10)
         
         # Option 2: Use smart scraper
@@ -626,5 +1538,129 @@ def main_with_ml():
     finally:
         browser.close()
 
+def test_analyzer_standalone():
+    """Standalone test function for the analyzer"""
+    print("🧪 Testing ConfigurableAnalyzer in standalone mode...")
+    
+    try:
+        # Test basic initialization
+        print("🔧 Initializing analyzer...")
+        analyzer = ConfigurableAnalyzer()
+        print("✅ Analyzer initialized successfully")
+        
+        # Test configuration
+        print("⚙️ Testing configuration...")
+        config_sections = list(analyzer.config.keys())
+        print(f"✅ Config sections: {config_sections}")
+        
+        # Test feature extraction with mock driver
+        print("🔍 Testing feature extraction with mock data...")
+        
+        class MockDriver:
+            def find_elements(self, by, selector):
+                # Return some mock elements for testing
+                if "pagination" in selector.lower():
+                    return [MockElement(), MockElement()]  # 2 pagination buttons
+                elif "next" in selector.lower():
+                    return [MockElement()]  # 1 next button
+                elif "product" in selector.lower():
+                    return [MockElement() for _ in range(20)]  # 20 products
+                else:
+                    return []
+            
+            def find_element(self, by, selector):
+                class MockBodyElement:
+                    text = "Sample page text with pagination page 1 of 10 showing 20 products"
+                return MockBodyElement()
+            
+            def execute_script(self, script):
+                if "scrollHeight" in script:
+                    return 2000
+                elif "innerHeight" in script:
+                    return 800
+                elif "pageYOffset" in script:
+                    return 0
+                elif "querySelectorAll" in script:
+                    return 50
+                elif "performance" in script:
+                    return 2
+                elif "userAgent" in script:
+                    return "Mozilla/5.0 Test Browser"
+                elif "innerWidth" in script:
+                    return 1920
+                else:
+                    return 1
+            
+            @property
+            def current_url(self):
+                return "https://example.com/search?page=1"
+        
+        class MockElement:
+            def __init__(self):
+                self.text = "Next"
+            
+            def is_displayed(self):
+                return True
+            
+            def is_enabled(self):
+                return True
+        
+        mock_driver = MockDriver()
+        
+        # Test feature extraction
+        features = analyzer._extract_features(mock_driver)
+        print(f"✅ Feature extraction successful: {len(features)} features")
+        
+        # Show key features
+        key_features = ['pagination_buttons', 'next_button', 'total_products', 'page_text_length']
+        for feature in key_features:
+            if feature in features:
+                print(f"   - {feature}: {features[feature]}")
+        
+        # Test rule-based analysis
+        result = analyzer._rule_based_analysis(mock_driver)
+        print(f"✅ Rule-based analysis result: {result}")
+        
+        # Test feature vector conversion
+        feature_vector = analyzer._features_to_vector(features)
+        print(f"✅ Feature vector created: shape {feature_vector.shape}")
+        
+        # Test training data collection
+        analyzer.collect_training_data(mock_driver, "pagination", "test_site")
+        print("✅ Training data collection successful")
+        
+        print("\n🎉 All standalone tests passed!")
+        print("📋 Summary:")
+        print(f"   - Configuration loaded: {len(config_sections)} sections")
+        print(f"   - Features extracted: {len(features)}")
+        print(f"   - Feature vector size: {len(feature_vector)}")
+        print(f"   - Analysis result: {result}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Standalone test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 if __name__ == "__main__":
-    main_with_ml()
+    print("🚀 Enhanced ML-Powered Analyzer - Standalone Test")
+    print("=" * 50)
+    
+    # Run standalone test
+    success = test_analyzer_standalone()
+    
+    if success:
+        print("\n✅ Analyzer is working correctly!")
+        print("\n📝 Next steps:")
+        print("   1. Use with browser: analyzer.analyze_page_structure(driver)")
+        print("   2. Collect training data: analyzer.collect_training_data(driver, 'pagination', 'site')")
+        print("   3. Train model: analyzer.train_model()")
+        print("   4. Run full application: python main.py")
+    else:
+        print("\n❌ Analyzer test failed. Check the errors above.")
+        print("\n🔧 Troubleshooting:")
+        print("   1. Install dependencies: pip install -r requirements.txt")
+        print("   2. Check file paths and permissions")
+        print("   3. Verify configuration files exist")

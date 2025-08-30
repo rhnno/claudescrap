@@ -1,0 +1,203 @@
+# News and Blog Feature Template
+# Optimized for news sites, blogs, and content-heavy websites
+
+template_name: "news_blog_pagination"
+description: "Template for news and blog pagination detection with content-focused features"
+version: "1.0"
+author: "Enhanced Analyzer System"
+
+# Core selectors for news and blog sites
+selectors:
+  pagination_buttons:
+    primary:
+      - selector: ".wp-pagenavi .pages, .wp-pagenavi a"
+        priority: 10
+        context: "wordpress_pagenavi"
+      - selector: ".pagination .page-numbers"
+        priority: 9
+        context: "wordpress_pagination"
+      - selector: ".nav-links .page-numbers"
+        priority: 8
+        context: "wordpress_nav_links"
+    
+    secondary:
+      - selector: ".pager .page-item, .pager .page-link"
+        priority: 7
+        context: "bootstrap_pager"
+      - selector: ".pagination-container button, .pagination-container a"
+        priority: 6
+        context: "generic_pagination"
+  
+  next_buttons:
+    primary:
+      - xpath: "//a[contains(@class, 'next') or contains(@rel, 'next')]"
+        priority: 10
+        context: "news_next_class_rel"
+      - xpath: "//a[contains(text(), 'Next') or contains(text(), 'Older')]"
+        priority: 9
+        context: "news_next_text"
+      - xpath: "//a[contains(text(), 'More Posts') or contains(text(), 'Continue Reading')]"
+        priority: 8
+        context: "news_more_posts"
+    
+    secondary:
+      - selector: ".next-post, .older-posts"
+        priority: 7
+        context: "news_next_post"
+      - selector: "a[aria-label*='next'], a[aria-label*='older']"
+        priority: 6
+        context: "news_next_aria"
+  
+  load_more_buttons:
+    primary:
+      - xpath: "//button[contains(text(), 'Load More Posts') or contains(text(), 'Show More Articles')]"
+        priority: 10
+        context: "news_load_more_posts"
+      - selector: ".load-more-posts, .show-more-articles"
+        priority: 9
+        context: "news_load_more_class"
+    
+    secondary:
+      - xpath: "//button[contains(text(), 'Read More') or contains(text(), 'View More')]"
+        priority: 7
+        context: "news_read_more"
+  
+  product_elements:  # Articles/posts in this context
+    primary:
+      - selector: "article, .post, .entry"
+        priority: 10
+        context: "news_semantic_articles"
+      - selector: ".article-item, .post-item, .news-item"
+        priority: 9
+        context: "news_article_items"
+    
+    secondary:
+      - selector: ".content-item, .story-item"
+        priority: 8
+        context: "news_content_items"
+      - selector: "[data-post-id], [data-article-id]"
+        priority: 7
+        context: "news_data_articles"
+    
+    fallback:
+      - selector: ".entry-content, .post-content"
+        priority: 5
+        context: "news_content_fallback"
+  
+  lazy_load_elements:
+    images:
+      - selector: "img[data-src]:not([src]), img[data-lazy-src]"
+        priority: 10
+        context: "news_lazy_images"
+      - selector: "img[loading='lazy']"
+        priority: 9
+        context: "news_native_lazy"
+    
+    content:
+      - selector: ".loading-content, .content-placeholder"
+        priority: 10
+        context: "news_loading_content"
+      - selector: ".article-skeleton, .post-skeleton"
+        priority: 9
+        context: "news_skeleton"
+
+# News and blog specific text patterns
+text_patterns:
+  pagination_indicators:
+    strong_indicators:
+      - pattern: "page \\d+ of \\d+"
+        weight: 0.95
+        feature_name: "news_page_of_total"
+      - pattern: "posts \\d+-\\d+ of \\d+"
+        weight: 0.9
+        feature_name: "news_posts_range"
+      - pattern: "articles \\d+-\\d+ of \\d+"
+        weight: 0.9
+        feature_name: "news_articles_range"
+    
+    weak_indicators:
+      - pattern: "\\d+ (posts|articles) found"
+        weight: 0.6
+        feature_name: "news_total_found"
+      - pattern: "showing \\d+ (posts|articles)"
+        weight: 0.5
+        feature_name: "news_showing_count"
+  
+  end_of_results:
+    high_confidence:
+      - pattern: "no more (posts|articles|stories)"
+        weight: 0.9
+        feature_name: "news_no_more"
+      - pattern: "end of (posts|articles|archive)"
+        weight: 0.85
+        feature_name: "news_end_of"
+      - pattern: "that's all the (posts|articles|stories)"
+        weight: 0.8
+        feature_name: "news_thats_all"
+    
+    medium_confidence:
+      - pattern: "all (posts|articles) shown"
+        weight: 0.7
+        feature_name: "news_all_shown"
+      - pattern: "no older (posts|articles)"
+        weight: 0.65
+        feature_name: "news_no_older"
+  
+  content_indicators:
+    - pattern: "published on|posted on|\\d{4}-\\d{2}-\\d{2}"
+      weight: 0.8
+      feature_name: "news_date_indicators"
+    - pattern: "by [A-Z][a-z]+ [A-Z][a-z]+|author:"
+      weight: 0.7
+      feature_name: "news_author_indicators"
+    - pattern: "read more|continue reading|full article"
+      weight: 0.6
+      feature_name: "news_read_more_indicators"
+
+# Dynamic features optimized for news/blog sites
+dynamic_features:
+  scroll_behavior:
+    track_velocity: true
+    track_acceleration: false
+    velocity_window: 3
+    detect_smooth_scrolling: false  # Less important for content sites
+  
+  dom_monitoring:
+    track_node_additions: true
+    track_node_removals: false
+    monitor_attribute_changes: false
+    significant_change_threshold: 3  # Articles load individually or in small groups
+  
+  network_activity:
+    monitor_xhr_requests: true
+    monitor_fetch_requests: true
+    track_image_loads: true  # Important for article images
+    request_timeout_window: 3000
+  
+  user_interaction:
+    detect_hover_effects: false  # Not critical for content sites
+    track_focus_changes: false
+    monitor_scroll_events: true
+
+# News/blog specific thresholds
+thresholds:
+  confidence_threshold: 0.75  # Slightly higher for content sites
+  footer_threshold_ratio: 0.8
+  scroll_bottom_threshold: 0.95
+  max_infinite_scroll_rounds: 15
+  consecutive_infinite_limit: 6
+
+# Feature weights for news/blog scenarios
+feature_weights:
+  pagination_buttons: 1.4  # Very important for traditional blogs
+  next_button: 1.3
+  numbered_buttons: 1.2
+  text_patterns: 1.3  # Important for content analysis
+  url_params: 1.1
+  product_elements: 1.2  # Articles are the main content
+
+# Performance settings for news/blog sites
+performance:
+  page_load_timeout: 25
+  element_wait_timeout: 8
+  scroll_pause_time: 2.0

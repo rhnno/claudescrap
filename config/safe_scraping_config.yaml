@@ -1,0 +1,72 @@
+# Safe Scraping Configuration
+# Implements technical precautions to reduce suspension risk
+
+scraping:
+  # Rate limiting and delays
+  delays:
+    between_requests: 
+      min: 0.5  # Minimum delay between requests (seconds)
+      max: 2.0  # Maximum delay between requests (seconds)
+    between_pages:
+      min: 1.0  # Minimum delay between pages (seconds)
+      max: 3.0  # Maximum delay between pages (seconds)
+    between_queries:
+      min: 5    # Minimum delay between different queries (seconds)
+      max: 15   # Maximum delay between different queries (seconds)
+    scroll_pause: 1.0  # Pause time during infinite scroll (seconds)
+    
+  # Resource limits
+  limits:
+    max_pages_per_query: 999999  # No limit on pages per query
+    max_concurrent_requests: 1   # Only one request at a time
+    daily_request_limit: 10000   # Maximum requests per day
+    hourly_request_limit: 500    # Maximum requests per hour
+    
+  # Browser behavior
+  browser:
+    headless: true
+    user_agent_rotation: true
+    respect_robots_txt: true
+    timeout:
+      page_load: 5      # Reduced page load timeout
+      element_wait: 3   # Reduced element wait timeout
+      script_timeout: 5 # JavaScript execution timeout
+    
+  # Stealth features
+  stealth:
+    randomize_viewport: true
+    randomize_timing: true
+    human_like_scrolling: true
+    avoid_detection_patterns: true
+    
+# User Agent Pool for Rotation
+user_agents:
+  - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  - "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+  - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+  - "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
+  - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0"
+
+# Compliance settings
+compliance:
+  respect_robots_txt: true
+  honor_crawl_delay: true
+  identify_as_research: true
+  contact_info: "research@example.com"
+  purpose: "Academic research and ML model training"
+  
+# Monitoring and alerts
+monitoring:
+  track_request_rate: true
+  alert_on_high_usage: true
+  log_response_times: true
+  monitor_error_rates: true
+  
+# Safety thresholds
+safety:
+  max_errors_per_hour: 50
+  max_timeouts_per_hour: 20
+  cooldown_on_errors: 300  # 5 minutes cooldown after errors
+  respect_http_status_codes: [429, 503, 502]  # Respect rate limiting

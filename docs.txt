@@ -1,0 +1,19 @@
+project/
+├── main.py              # ← Composer only
+├── func/                # ← Package folder
+│   ├── __init__.py      # ← Makes it a package
+│   ├── browser.py       # ← Browser setup & navigation
+│   ├── scraper.py       # ← Scraping logic
+│   ├── parser.py        # ← Data parsing
+│   ├── utils.py         # ← Random delays & helpers
+│   └── storage.py       # ← File operations
+│   └── analyzer.py	  # <- training pagination or infinity scroll analyzer model
+├── data/                # ← Data storage
+│   ├── raw_html/        # ← Saved HTML files
+│   └── processed/       # ← CSV files
+├── model/
+│   ├── model.pkl			# trained model 
+│   └── training_data.csv # store collected data
+└── requirements.txt
+
+i want new feature in analyzer.py to be config-able inside yaml template so i can give rich example for training model.

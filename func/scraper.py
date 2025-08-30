@@ -4,6 +4,7 @@ from .storage import DataStorage
 from .analyzer import PaginationAnalyzer as analyzer
 from .analyzer import SmartTokopediaScraper
 from .analyzer import TrainingDataCollector
+from .analyzer import ConfigurableAnalyzer
 
 
 import os
@@ -15,6 +16,7 @@ class TokopediaScraper:
         self.browser = browser_manager
         self.storage = DataStorage()
         self.utils = RandomUtils()
+        self.analyzer = ConfigurableAnalyzer()
     
     def build_search_url(self, query):
         """Build Tokopedia search URL"""
@@ -53,7 +55,23 @@ class TokopediaScraper:
         self.browser.navigate_to(url)
         
         for page_num in range(1, max_pages + 1):
-            print(f"\n📄 Processing Page {page_num}")
+            page_type = self.analyzer.analyze_page_structure(self.browser.driver)
+            
+            if page_type == "pagination":
+                next_btn = self.find_next_button()
+                if next_btn: next_btn.click()
+
+            elif page_type == "infinite_scroll":
+                self.utils.human_like_scroll(self.browser.driver, scroll_pause_time=2)
+                self.analyzer.collect_training_data(
+                    self.browser.driver,
+                    actual_type="infinite_scroll",
+                    site_name="tokopedia",
+                    extra_features={"scroll_round": page_num}
+                )
+
+            elif page_type == "last_page":
+                break
             
             # Wait for page load
             if not self.browser.wait_for_page_load():
@@ -92,7 +110,7 @@ class TokopediaScraper:
                 print("❌ No more pages")
                 break
 
-            page_type = analyzer.analyze_page_structure(self.browser.driver)
+            page_type = self.analyzer(self.browser.driver)
         
             if page_type == 'pagination':
             # Use traditional next button clicking
@@ -110,6 +128,6 @@ class TokopediaScraper:
         """Scroll to pagination area"""
         try:
             self.browser.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            self.utils.random_sleep(1, 3)
+            self.utils.random_sleep(0.5, 1)
         except Exception as e:
             print(f"❌ Scroll error: {e}")

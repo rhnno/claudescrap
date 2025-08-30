@@ -18,11 +18,21 @@ class BrowserManager:
         options.add_argument('--disable-blink-features=AutomationControlled')
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', True)
-        options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 15_6_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36')
+        # Rotate user agents for better stealth
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+        ]
+        import random
+        selected_ua = random.choice(user_agents)
+        options.add_argument(f'--user-agent={selected_ua}')
         
         self.driver = webdriver.Chrome(options=options)
         self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        self.wait = WebDriverWait(self.driver, 10)
+        self.wait = WebDriverWait(self.driver, 5)
         return self.driver
     
     def navigate_to(self, url):
@@ -30,11 +40,11 @@ class BrowserManager:
         self.driver.get(url)
         return self.wait_for_page_load()
     
-    def wait_for_page_load(self, timeout=10):
-        """Wait for page to fully load"""
+    def wait_for_page_load(self, timeout=5):
+        """Wait for page to fully load with reduced timing"""
         try:
             self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-            time.sleep(2)  # Additional wait for dynamic content
+            time.sleep(0.5)  # Reduced wait for dynamic content
             return True
         except:
             print("⚠️ Page load timeout")
