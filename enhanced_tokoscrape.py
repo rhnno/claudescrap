@@ -4,20 +4,12 @@ Enhanced Tokopedia Scraper with ML-Powered Pagination Detection
 Integrates your existing selectors with the enhanced analyzer system
 """
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import InvalidSessionIdException, WebDriverException, NoSuchElementException
-from selenium.webdriver.common.action_chains import ActionChains
 import time
 import random
 import pandas as pd
 import csv
 import re
-import os
-import sys
 from datetime import datetime
 
 # Using proper package imports
@@ -368,7 +360,7 @@ class EnhancedTokopediaScraper:
         
         # Enhanced storage using DataStorage class
         try:
-            self.storage.save_to_csv(products, f"enhanced_{search_query}")
+            self.storage.save_to_csv(products, f"data_{search_query}")
             print("✅ Enhanced storage completed")
         except Exception as e:
             print(f"⚠️ Enhanced storage failed: {e}")
