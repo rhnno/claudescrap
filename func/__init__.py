@@ -11,7 +11,7 @@ from .storage import DataStorage
 from .utils import RandomUtils
 
 # Enhanced ML-powered analyzer components
-from .analyzer import ConfigurableAnalyzer
+from .analyzer import ConfigurableAnalyzer, EnhancedConfigurableAnalyzer
 from .analyzer import SmartTokopediaScraper
 from .analyzer import TrainingDataCollector
 
@@ -46,6 +46,7 @@ __all__ = [
     
     # Enhanced ML components
     'ConfigurableAnalyzer',
+    'EnhancedConfigurableAnalyzer',
     'SmartTokopediaScraper',
     'TrainingDataCollector',
     
@@ -57,12 +58,12 @@ __all__ = [
 # Remove None values from __all__ (for missing legacy components)
 __all__ = [item for item in __all__ if globals().get(item) is not None]
 
-# Package initialization
+# Package initialization (simplified to avoid hanging)
 def _initialize_package():
     """Initialize the enhanced scraper package"""
     import os
     
-    # Create necessary directories
+    # Create necessary directories silently
     directories = [
         'data',
         'data/raw_html',
@@ -73,28 +74,20 @@ def _initialize_package():
     ]
     
     for directory in directories:
-        os.makedirs(directory, exist_ok=True)
-    
-    # Print initialization message
-    print("🧠 Enhanced ML-Powered Web Scraper Package Loaded")
-    print(f"📦 Version: {__version__}")
-    print(f"🔧 Available components: {len(__all__)}")
-    
-    # Show available components
-    components = {
-        'Core': ['BrowserManager', 'DataStorage', 'RandomUtils'],
-        'ML-Powered': ['ConfigurableAnalyzer', 'SmartTokopediaScraper', 'TrainingDataCollector'],
-        'Legacy': ['TokopediaScraper', 'ProductParser']
-    }
-    
-    for category, items in components.items():
-        available = [item for item in items if item in __all__]
-        if available:
-            print(f"   {category}: {', '.join(available)}")
+        try:
+            os.makedirs(directory, exist_ok=True)
+        except:
+            pass  # Ignore errors during directory creation
 
-# Initialize package
-_initialize_package()
+# Initialize package silently
+try:
+    _initialize_package()
+except:
+    pass  # Ignore initialization errors
 
 # Cleanup
-del _initialize_package
+try:
+    del _initialize_package
+except:
+    pass
 

@@ -7,7 +7,7 @@ import sys
 import os
 
 # Add func directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'func'))
+# Using proper package imports
 
 def test_analyzer():
     """Test the ConfigurableAnalyzer"""
@@ -16,7 +16,7 @@ def test_analyzer():
     try:
         # Test imports
         print("📦 Testing imports...")
-        from func.analyzer import ConfigurableAnalyzer
+        from func import ConfigurableAnalyzer
         print("✅ ConfigurableAnalyzer imported successfully")
         
         # Test initialization

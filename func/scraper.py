@@ -1,7 +1,6 @@
 from selenium.webdriver.common.by import By
 from .utils import RandomUtils
 from .storage import DataStorage
-from .analyzer import PaginationAnalyzer as analyzer
 from .analyzer import SmartTokopediaScraper
 from .analyzer import TrainingDataCollector
 from .analyzer import ConfigurableAnalyzer
