@@ -93,6 +93,37 @@ training_templates:
               priority: 6
               context: "generic_product"
               weight: 0.6
+
+        product_details:
+          high_confidence:
+            - name: "link"
+              xpath: ".//a[contains(@href, '/')]"
+              type: "attribute"
+              attribute: "href"
+            - name: "name"
+              xpath: ".//*[contains(@class,'tnoqZhn89')]"
+              type: "text"
+            - name: "price"
+              xpath: ".//*[contains(@class, 'urMOIDHH7')]"
+              type: "text"
+            - name: "discount"
+              xpath: ".//*[contains(@class, 'discount')]"
+              type: "text"
+            - name: "before_discount_price"
+              xpath: ".//*[contains(@class, 'before-discount')]"
+              type: "text"
+            - name: "sold"
+              xpath: ".//*[contains(text(), 'terjual')]"
+              type: "text"
+            - name: "shop_name"
+              xpath: ".//*[contains(@class, 'si3CNdiG8AR0EaXvf6bFbQ')]"
+              type: "text"
+            - name: "rating"
+              xpath: ".//*[contains(@class, '55aCJ8bEsyw')]"
+              type: "text"
+            - name: "location"
+              xpath: ".//*[contains(@class, 'location')]"
+              type: "text"
               
       # Enhanced text analysis patterns with confidence scoring
       text_patterns:

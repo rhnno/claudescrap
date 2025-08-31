@@ -16,7 +16,15 @@ from pathlib import Path
 # Using proper package imports
 
 try:
-    from func import BrowserManager, ConfigurableAnalyzer, EnhancedConfigurableAnalyzer, SmartTokopediaScraper, DataStorage, RandomUtils
+    from func import (
+        BrowserManager,
+        ConfigurableAnalyzer,
+        EnhancedConfigurableAnalyzer,
+        SmartTokopediaScraper,
+        DataStorage,
+        RandomUtils,
+        EnhancedTokopediaScraper
+    )
 except ImportError as e:
     print(f"❌ Import error: {e}")
     print("🔧 Make sure all required modules are in the func/ directory")
@@ -102,11 +110,12 @@ class EnhancedScraperApp:
                 logger.warning(f"⚠️ Config file not found: {config_path}, using defaults")
                 config_path = None
             
-            self.analyzer = ConfigurableAnalyzer(config_path)
+            self.analyzer = EnhancedConfigurableAnalyzer(config_path)
             
             # Initialize smart scraper
             logger.info("🕷️ Setting up smart scraper...")
-            self.scraper = SmartTokopediaScraper(self.browser)
+            self.scraper = EnhancedTokopediaScraper(use_trained_model=True)
+            self.scraper.browser = self.browser
             
             logger.info("✅ All components initialized successfully")
             return True
@@ -123,25 +132,18 @@ class EnhancedScraperApp:
         logger.info(f"🔍 Starting scrape session: query='{query}', site='{site_name}'")
         
         try:
-            # Reset analyzer state for new session
-            self.analyzer.reset_state()
+            # The new scraper handles its own analyzer state.
             
             # Perform smart scraping with ML-powered pagination detection
-            results = self.scraper.smart_scrape(
-                query=query, 
+            results = self.scraper.scrape_tokopedia_products(
+                search_query=query,
                 max_pages=self.config['max_pages']
             )
             
-            logger.info(f"📊 Scraping completed: {len(results)} pages processed")
+            logger.info(f"📊 Scraping completed: {len(results)} products found")
             
-            # Train model on session data if enabled
-            if self.config['auto_train_model']:
-                logger.info("🧠 Training model on session data...")
-                success = self.scraper.train_on_current_session()
-                if success:
-                    logger.info("✅ Model training completed")
-                else:
-                    logger.warning("⚠️ Model training failed")
+            # The new scraper does not have a `train_on_current_session` method.
+            # This functionality should be handled by a separate training orchestrator.
             
             return results
             
@@ -239,176 +241,6 @@ class EnhancedScraperApp:
         logger.info("✅ Cleanup completed")
 
 
-class EnhancedTokopediaScraper:
-    """Enhanced scraper using the new YAML template-based analyzer"""
-    
-    def __init__(self, browser_manager):
-        self.browser = browser_manager
-        self.analyzer = EnhancedConfigurableAnalyzer(
-            config_path="config/analyzer_config.yaml",
-            template_path="config/enhanced_training_templates.yaml"
-        )
-        self.storage = DataStorage()
-        self.utils = RandomUtils()
-    
-    def smart_scrape(self, query, max_pages=50):
-        """Intelligent scraping with enhanced ML pagination detection"""
-        results = []
-        url = f"https://www.tokopedia.com/search?st=product&q={query}"
-        
-        # Reset analyzer state for new session
-        self.analyzer.reset_state()
-        
-        self.browser.navigate_to(url)
-        
-        page_num = 1
-        consecutive_infinite_scroll = 0
-        
-        while page_num <= max_pages:
-            print(f"\n🔍 Analyzing page {page_num} with Enhanced Analyzer...")
-            
-            # Extract features and predict pagination type using enhanced analyzer
-            page_type = self.analyzer.analyze_page_structure(
-                self.browser.driver, 
-                site_name='tokopedia'  # Site-specific analysis
-            )
-            
-            # Save current page
-            filename = self._save_page(query, page_num)
-            results.append({
-                'page': page_num,
-                'type': page_type,
-                'filename': filename,
-                'url': self.browser.driver.current_url
-            })
-            
-            print(f"📊 Enhanced Analysis Result: {page_type}")
-            
-            # Handle different page types
-            if page_type == 'pagination':
-                print("📄 Detected: Traditional pagination")
-                if not self._handle_pagination():
-                    break
-                    
-            elif page_type == 'infinite_scroll':
-                print("♾️ Detected: Infinite scroll")
-                consecutive_infinite_scroll += 1
-                
-                if consecutive_infinite_scroll > 5:
-                    print("⚠️ Too many infinite scroll detections, switching strategy")
-                    if not self._handle_pagination():
-                        break
-                else:
-                    if not self._handle_infinite_scroll():
-                        break
-                        
-            elif page_type == 'last_page':
-                print("🏁 Detected: Last page reached")
-                break
-            
-            page_num += 1
-            self._random_delay()
-        
-        return results
-    
-    def _handle_pagination(self):
-        """Handle traditional pagination"""
-        from selenium.webdriver.common.by import By
-        
-        next_selectors = [
-            "button[aria-label*='next'], button[aria-label*='Next']",
-            "a[aria-label*='next'], a[aria-label*='Next']", 
-            ".pagination .next:not(.disabled)",
-            "button[class*='next']:not([disabled])",
-            "a[class*='next']:not([disabled])"
-        ]
-        
-        next_xpaths = [
-            "//button[contains(text(),'›')]",
-            "//a[contains(text(),'›')]",
-            "//button[contains(text(),'Next')]",
-            "//a[contains(text(),'Next')]"
-        ]
-        
-        for selector in next_selectors:
-            try:
-                elements = self.browser.driver.find_elements(By.CSS_SELECTOR, selector)
-                for element in elements:
-                    if element.is_displayed() and element.is_enabled():
-                        element.click()
-                        return True
-            except:
-                continue
-        
-        for xpath in next_xpaths:
-            try:
-                elements = self.browser.driver.find_elements(By.XPATH, xpath)
-                for element in elements:
-                    if element.is_displayed() and element.is_enabled():
-                        element.click()
-                        return True
-            except:
-                continue
-        
-        return False
-    
-    def _handle_infinite_scroll(self, max_rounds=10, delay_range=(0.5, 1.5)):
-        """Handle infinite scroll with enhanced monitoring"""
-        import random, time
-
-        last_height = self.browser.driver.execute_script("return document.body.scrollHeight")
-
-        for round_num in range(1, max_rounds + 1):
-            print(f"📽 Enhanced infinite scroll round {round_num}/{max_rounds}")
-
-            self.browser.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(random.uniform(*delay_range))
-
-            new_height = self.browser.driver.execute_script("return document.body.scrollHeight")
-            new_items_loaded = new_height - last_height
-
-            if new_height == last_height:
-                print("🏁 Reached the end of infinite scroll (no new content).")
-                return False
-            else:
-                print(f"✅ New content loaded (+{new_items_loaded}px)")
-                last_height = new_height
-
-        return True
-
-    def _save_page(self, query, page_num):
-        """Save current page HTML safely"""
-        import re
-        
-        try:
-            folder = os.path.join(os.getcwd(), "data", "raw_html")
-            os.makedirs(folder, exist_ok=True)
-
-            safe_query = re.sub(r"[^a-zA-Z0-9_-]", "_", query)
-            filename = os.path.join(folder, f"enhanced_page_{safe_query}_{page_num:03d}.html")
-
-            try:
-                html = self.browser.driver.page_source
-            except Exception as e:
-                print(f"⚠ Could not fetch page source: {e}")
-                return None
-
-            with open(filename, "w", encoding="utf-8") as f:
-                f.write(html)
-
-            print(f"💾 Enhanced page saved: {filename}")
-            return filename
-
-        except Exception as e:
-            print(f"⚠ Error saving page {page_num}: {e}")
-            return None
-    
-    def _random_delay(self, min_sec=0.5, max_sec=2):
-        """Random delay between actions"""
-        import random
-        import time
-        delay = random.uniform(min_sec, max_sec)
-        time.sleep(delay)
 
 
 def main():

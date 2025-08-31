@@ -12,15 +12,12 @@ from .utils import RandomUtils
 
 # Enhanced ML-powered analyzer components
 from .analyzer import ConfigurableAnalyzer, EnhancedConfigurableAnalyzer
-from .analyzer import SmartTokopediaScraper
 from .analyzer import TrainingDataCollector
 
-# Legacy components (if they exist)
-try:
-    from .scraper import TokopediaScraper
-except ImportError:
-    TokopediaScraper = None
+# Scraper components
+from .scraper import SmartTokopediaScraper, EnhancedTokopediaScraper
 
+# Legacy components (if they exist)
 try:
     from .parser import ProductParser
 except ImportError:
@@ -47,11 +44,13 @@ __all__ = [
     # Enhanced ML components
     'ConfigurableAnalyzer',
     'EnhancedConfigurableAnalyzer',
-    'SmartTokopediaScraper',
     'TrainingDataCollector',
     
+    # Scraper components
+    'SmartTokopediaScraper',
+    'EnhancedTokopediaScraper',
+
     # Legacy components (if available)
-    'TokopediaScraper',
     'ProductParser',
 ]
 
