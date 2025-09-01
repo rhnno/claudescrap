@@ -5,20 +5,20 @@ class RandomUtils:
     """Utility functions for random delays and human-like behavior"""
     
     @staticmethod
-    def random_delay(min_delay=1, max_delay=10):
-        """Generate random delay duration"""
+    def random_delay(min_delay=0.5, max_delay=3):
+        """Generate random delay duration with reduced timing"""
         return random.uniform(min_delay, max_delay)
     
     @staticmethod
-    def random_sleep(min_sec=1, max_sec=5):
-        """Sleep for random duration"""
+    def random_sleep(min_sec=0.5, max_sec=2):
+        """Sleep for random duration with reduced delays"""
         delay = random.uniform(min_sec, max_sec)
         time.sleep(delay)
         print(f"😴 Slept for {delay:.2f} seconds")
     
     @staticmethod
-    def human_like_scroll(driver, scroll_pause_time=2):
-        """Scroll like a human"""
+    def human_like_scroll(driver, scroll_pause_time=1):
+        """Scroll like a human with faster timing"""
         # Get scroll height
         last_height = driver.execute_script("return document.body.scrollHeight")
         
