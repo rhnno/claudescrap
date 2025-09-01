@@ -68,6 +68,14 @@ training_templates:
               priority: 9
               context: "tokopedia_skeleton"
               weight: 0.9
+            - xpath: "//span[contains(@class, 'css-1turmok-unf-btn eg8apji0')]"
+              priority: 9
+              context: "tokopedia_load_more_span"
+              weight: 0.9
+            - xpath: "//*[contains(text(), 'Muat Lebih Banyak')]"
+              priority: 9
+              context: "tokopedia_load_more_text"
+              weight: 0.9
           medium_confidence:
             - selector: "[class*='loading'], [class*='skeleton']"
               priority: 7
@@ -77,12 +85,20 @@ training_templates:
               priority: 6
               context: "lazy_loading"
               weight: 0.7
+            - selector: ".IOLazyloading"
+              priority: 6
+              context: "generic_lazy_loading_io"
+              weight: 0.7
               
         product_containers:
           primary:
             - selector: "div[class*='css-5wh65g']" # Main product card
               priority: 10
               context: "tokopedia_product_card"
+              weight: 1.0
+            - selector: "div.css-5wh65g"
+              priority: 10
+              context: "tokopedia_product_card_specific"
               weight: 1.0
           secondary:
             - selector: "[data-testid*='product']"
@@ -370,6 +386,14 @@ training_templates:
           priority: 7
           context: "generic_arrow"
           weight: 0.7
+        - xpath: "//a[@rel='next']"
+          priority: 9
+          context: "generic_rel_next"
+          weight: 0.9
+        - xpath: "//*[@title='Next Page' or @title='next']"
+          priority: 8
+          context: "generic_title_next"
+          weight: 0.8
           
       infinite_scroll_indicators:
         - selector: "[data-infinite-scroll], [class*='infinite-scroll']"

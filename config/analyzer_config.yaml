@@ -11,17 +11,24 @@ features:
     - .skeleton
     - .shimmer
     - .loading-placeholder
+    - .IOLazyloading
     load_more_buttons:
     - //*[contains(text(), 'Load More')]
     - //*[contains(text(), 'Show More')]
     - //*[contains(text(), 'Muat')]
     - //*[contains(text(), 'Tampilkan Lebih')]
+    - //span[contains(@class, 'css-1turmok-unf-btn eg8apji0')]
+    - //*[contains(text(), 'Muat Lebih Banyak')]
     next_buttons:
     - //*[contains(text(), 'Next')]
     - //*[contains(text(), 'next')]
     - "//*[contains(text(), '\u203A')]"
     - "//*[contains(text(), '\u2192')]"
     - //*[contains(@aria-label, 'next')]
+    - //a[@rel='next']
+    - //*[@title='Next Page']
+    - //*[@title='next']
+    - //*[contains(@aria-label, 'Laman berikutnya')]
     pagination_buttons:
     - button[class*='pagination']
     - a[class*='pagination']
@@ -34,6 +41,7 @@ features:
     - '[data-testid*=''product'']'
     - .product-card
     - .item-card
+    - div.css-5wh65g
   text_analysis:
     end_of_results_patterns:
     - no\s+more\s+results

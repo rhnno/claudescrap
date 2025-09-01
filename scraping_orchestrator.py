@@ -66,6 +66,7 @@ class ScrapingOrchestrator:
                 use_profile=use_profile,
                 profile_name="research_profile"
             )
+            self.browser.setup_driver()
             print("✅ Browser setup for production scraping")
             return True
         except Exception as e:

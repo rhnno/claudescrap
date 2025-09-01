@@ -9,6 +9,10 @@ import sys
 import time
 from datetime import datetime
 
+# Add project root to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 def print_header():
     """Print verification header"""
     print("🧪 Integrated Systems Verification")
