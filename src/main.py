@@ -16,18 +16,13 @@ from pathlib import Path
 # Using proper package imports
 
 try:
-    from func import (
-        BrowserManager,
-        ConfigurableAnalyzer,
-        EnhancedConfigurableAnalyzer,
-        SmartTokopediaScraper,
-        DataStorage,
-        RandomUtils,
-        EnhancedTokopediaScraper
-    )
+    from utils.browser import BrowserManager
+    from scrapers.scraper import SmartTokopediaScraper, EnhancedTokopediaScraper
+    from utils.storage import DataStorage
+    from utils.utils import RandomUtils
 except ImportError as e:
     print(f"❌ Import error: {e}")
-    print("🔧 Make sure all required modules are in the func/ directory")
+    print("🔧 Make sure all required modules are in the src/ directory and subdirectories")
     sys.exit(1)
 
 # Configure logging with proper path handling
@@ -56,7 +51,6 @@ class EnhancedScraperApp:
     
     def __init__(self):
         self.browser = None
-        self.analyzer = None
         self.scraper = None
         self.running = True
         
@@ -103,14 +97,6 @@ class EnhancedScraperApp:
             self.browser = BrowserManager()
             self.browser.setup_driver()
             
-            # Initialize analyzer with enhanced configuration
-            logger.info("🧠 Initializing ML analyzer...")
-            config_path = self.config['analyzer_config_path']
-            if not os.path.exists(config_path):
-                logger.warning(f"⚠️ Config file not found: {config_path}, using defaults")
-                config_path = None
-            
-            self.analyzer = EnhancedConfigurableAnalyzer(config_path)
             
             # Initialize smart scraper
             logger.info("🕷️ Setting up smart scraper...")
@@ -172,15 +158,6 @@ class EnhancedScraperApp:
                     else:
                         logger.warning(f"⚠️ No results for query '{query}'")
                     
-                    # Check if it's time for model retraining
-                    current_time = time.time()
-                    if (current_time - last_training_time) >= self.config['training_interval']:
-                        logger.info("🧠 Performing scheduled model retraining...")
-                        if self.analyzer.train_model():
-                            logger.info("✅ Scheduled training completed")
-                            last_training_time = current_time
-                        else:
-                            logger.warning("⚠️ Scheduled training failed")
                     
                     # Random delay between queries
                     if self.running:
@@ -212,11 +189,6 @@ class EnhancedScraperApp:
             logger.info(f"🧪 Testing with query: {query}")
             results = self.run_single_scrape(query)
             
-            if results:
-                # Show feature analysis
-                logger.info("📊 Analyzing features...")
-                features = self.analyzer.get_feature_summary(self.browser.driver)
-                logger.info(f"📈 Feature completeness: {features.get('_feature_completeness', 0):.2f}")
             
             time.sleep(5)  # Reduced delay between tests
         
@@ -231,9 +203,6 @@ class EnhancedScraperApp:
                 self.browser.close()
                 logger.info("✅ Browser closed")
             
-            if self.analyzer:
-                # Save any pending training data
-                logger.info("💾 Saving final state...")
             
         except Exception as e:
             logger.error(f"⚠️ Error during cleanup: {e}")

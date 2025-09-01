@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 # Using proper package imports
-from func import BrowserManager
+from utils.browser import BrowserManager
    
 
 def open_chrome_with_browser_manager():
@@ -153,7 +153,7 @@ if __name__ == "__main__":
             print("   2. Login sessions will persist between runs")
             print("   3. Integrate with your scraper using the same profile")
             print("\n🔧 Integration example:")
-            print("   from func import BrowserManager")
+            print("   from src.utils.browser import BrowserManager")
             print("   browser = BrowserManager(use_profile=True, profile_name='research_profile')")
         else:
             print("\n❌ Failed to open Chrome with Selenium")

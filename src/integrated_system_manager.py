@@ -12,8 +12,8 @@ from datetime import datetime
 
 # Using proper package imports
 
-from enhanced_chrome_profile_setup import EnhancedProfileSetup
-from continuous_bug_scanner import BugScanner
+from utils.enhanced_chrome_profile_setup import EnhancedProfileSetup
+from utils.continuous_bug_scanner import BugScanner
 
 class IntegratedSystemManager:
     """Manages both Chrome profile setup and continuous bug scanning"""
@@ -66,7 +66,7 @@ class IntegratedSystemManager:
         self.bug_scanner = BugScanner(
             project_path="./",
             watch_mode=False,  # No watching during setup
-            focus_modules=["func.browser", "func.analyzer"]
+            focus_modules=["src.utils.browser"]
         )
         
         # Run scan to identify issues
@@ -147,10 +147,9 @@ class IntegratedSystemManager:
                 project_path="./",
                 watch_mode=True,
                 focus_modules=[
-                    "func.browser",
-                    "func.analyzer", 
-                    "func.storage",
-                    "func.utils"
+                    "src.utils.browser",
+                    "src.utils.storage",
+                    "src.utils.utils"
                 ]
             )
             
@@ -193,7 +192,6 @@ class IntegratedSystemManager:
         
         verification_results = {
             'browser_manager': False,
-            'enhanced_analyzer': False,
             'profile_setup': False,
             'bug_scanner': False,
             'overall_health': 0
@@ -201,7 +199,7 @@ class IntegratedSystemManager:
         
         # Test BrowserManager
         try:
-            from func import BrowserManager
+            from utils.browser import BrowserManager
             
             # Test with headless parameter (should not error)
             browser = BrowserManager(headless=True)
@@ -211,14 +209,7 @@ class IntegratedSystemManager:
         except Exception as e:
             print(f"❌ BrowserManager integration failed: {e}")
         
-        # Test EnhancedConfigurableAnalyzer
-        try:
-            from func import EnhancedConfigurableAnalyzer
-            analyzer = EnhancedConfigurableAnalyzer()
-            verification_results['enhanced_analyzer'] = True
-            print("✅ EnhancedConfigurableAnalyzer integration verified")
-        except Exception as e:
-            print(f"❌ EnhancedConfigurableAnalyzer integration failed: {e}")
+        # Test EnhancedConfigurableAnalyzer (Removed)
         
         # Test Profile Setup
         if self.profile_setup:

@@ -6,28 +6,21 @@ ML-powered pagination detection and configurable analysis.
 """
 
 # Core browser and scraping functionality
-from .browser import BrowserManager
-from .storage import DataStorage
-from .utils import RandomUtils
+from .utils.browser import BrowserManager
+from .utils.storage import DataStorage
+from .utils.utils import RandomUtils
 
 # Enhanced ML-powered analyzer components
-from .analyzer import ConfigurableAnalyzer, EnhancedConfigurableAnalyzer
-from .analyzer import TrainingDataCollector
+# The ML-powered analyzer components have been removed as per the user's request.
 
 # Scraper components
-from .scraper import SmartTokopediaScraper, EnhancedTokopediaScraper
+from .scrapers.scraper import SmartTokopediaScraper, EnhancedTokopediaScraper
 
 # Legacy components (if they exist)
 try:
-    from .parser import ProductParser
+    from .utils.parser import ProductParser
 except ImportError:
     ProductParser = None
-
-# Test module (optional)
-try:
-    from .test import *
-except ImportError:
-    pass
 
 # Package metadata
 __version__ = "2.0.0"
@@ -42,9 +35,9 @@ __all__ = [
     'RandomUtils',
     
     # Enhanced ML components
-    'ConfigurableAnalyzer',
-    'EnhancedConfigurableAnalyzer',
-    'TrainingDataCollector',
+    # 'ConfigurableAnalyzer',
+    # 'EnhancedConfigurableAnalyzer',
+    # 'TrainingDataCollector',
     
     # Scraper components
     'SmartTokopediaScraper',

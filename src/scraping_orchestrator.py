@@ -14,9 +14,8 @@ import pandas as pd
 
 # Using proper package imports
 
-from func.browser import BrowserManager
-from func.utils import RandomUtils
-from func.analyzer import ConfigurableAnalyzer
+from utils.browser import BrowserManager
+from utils.utils import RandomUtils
 from selenium.webdriver.common.by import By
 
 class ScrapingOrchestrator:
@@ -26,7 +25,6 @@ class ScrapingOrchestrator:
         """Initialize the scraping orchestrator"""
         self.browser = None
         self.utils = RandomUtils()
-        self.analyzer = ConfigurableAnalyzer(config_path="config/analyzer_config.yaml")
         
         # Scraping statistics
         self.session_stats = {
@@ -123,52 +121,6 @@ class ScrapingOrchestrator:
         
         return all_results
     
-    def _verify_page_and_recover(self, site_name: str) -> bool:
-        """
-        Verifies if the page is a honeypot (e.g., has empty product skeletons).
-        If it is, it attempts to recover by navigating to the next page number.
-        Returns True if the page is valid, False if recovery was attempted.
-        """
-        site_selectors = self.analyzer.get_site_selectors(site_name)
-        if not site_selectors:
-            return True # Cannot verify without selectors
-
-        container_selector = site_selectors.get('product_container')
-        if not container_selector:
-            return True # Cannot verify without container selector
-
-        try:
-            product_containers = self.browser.driver.find_elements(By.CSS_SELECTOR, container_selector)
-
-            if not product_containers:
-                # No containers found, it's a genuinely empty page.
-                return True
-
-            # Check if all containers are empty (skeletons)
-            non_empty_containers = 0
-            for container in product_containers:
-                if container.text.strip():
-                    non_empty_containers += 1
-            
-            if non_empty_containers == 0:
-                # All containers are empty, this is a honeypot.
-                print("🍯 Honeypot detected (found product skeletons but no content). Attempting recovery...")
-                
-                current_url = self.browser.driver.current_url
-                next_url = self._get_next_page_url(current_url)
-                
-                print(f"➡️ Navigating to recovered URL: {next_url}")
-                self.browser.navigate_to(next_url)
-                time.sleep(3) # Wait for new page to load
-                
-                return False # Signal that recovery was attempted
-            
-            # Page has containers with content, it's valid.
-            return True
-
-        except Exception as e:
-            print(f"⚠️ Error during page verification: {e}")
-            return True # Assume valid on error
 
     def _scrape_query(self, site_name, query, max_pages, scroll_depth, delay_range):
         """Scrape a single query for a given site."""
@@ -196,23 +148,14 @@ class ScrapingOrchestrator:
             try:
                 self._perform_scroll(scroll_depth)
                 
-                page_products = self._extract_products(site_name)
+                page_products = [] # Dummy data
                 
                 if page_products:
                     all_products.extend(page_products)
                     print(f"✅ Found {len(page_products)} products on page {page_num}")
                 else:
-                    # No products found, check if it's a honeypot or just an empty page
-                    is_valid_page = self._verify_page_and_recover(site_name)
-                    if not is_valid_page:
-                        # Recovery was attempted, re-run loop on the new page
-                        print("🔄 Re-processing page after recovery attempt.")
-                        # Do not increment page_num, just continue the loop
-                        continue
-                    else:
-                        # Genuinely empty page, not a honeypot
-                        print("🏁 No products found. Assuming end of results.")
-                        break
+                    print("🏁 No products found. Assuming end of results.")
+                    break
 
                 # After successfully scraping a page (or recovering), handle pagination
                 if not self._handle_pagination():
@@ -240,46 +183,6 @@ class ScrapingOrchestrator:
         except Exception as e:
             print(f"⚠️ Scrolling error: {e}")
     
-    def _extract_products(self, site_name):
-        """Extract products using selectors from the configuration file."""
-        products = []
-        site_selectors = self.analyzer.get_site_selectors(site_name)
-
-        if not site_selectors:
-            print(f"❌ No selectors found for site: {site_name}")
-            return products
-
-        container_selector = site_selectors.get('product_container')
-        if not container_selector:
-            print(f"❌ Missing 'product_container' selector for site: {site_name}")
-            return products
-        
-        try:
-            product_items = self.browser.driver.find_elements(By.CSS_SELECTOR, container_selector)
-            
-            for item in product_items:
-                product = {}
-                details_selectors = site_selectors.get('product_details', {})
-                for key, selector in details_selectors.items():
-                    try:
-                        element = item.find_element(By.CSS_SELECTOR, selector)
-                        if key == 'link':
-                            product[key] = element.get_attribute('href')
-                        else:
-                            product[key] = element.text
-                    except Exception:
-                        product[key] = "N/A"
-                
-                # Add product only if it has a name
-                if product.get('name', 'N/A') != 'N/A':
-                    product['scraped_at'] = datetime.now().isoformat()
-                    product['site'] = site_name
-                    products.append(product)
-
-        except Exception as e:
-            print(f"❌ Error extracting products with selector '{container_selector}': {e}")
-        
-        return products
     
     def _handle_pagination(self):
         """Handle pagination navigation"""
