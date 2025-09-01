@@ -14,34 +14,19 @@ import pandas as pd
 
 # Using proper package imports
 
-from func import EnhancedConfigurableAnalyzer, BrowserManager, DataStorage, RandomUtils
+from func.browser import BrowserManager
+from func.utils import RandomUtils
+from func.analyzer import ConfigurableAnalyzer
+from selenium.webdriver.common.by import By
 
 class ScrapingOrchestrator:
-    """Production orchestrator for intelligent scraping with trained models"""
+    """A rule-based orchestrator for scraping e-commerce sites."""
     
-    def __init__(self, use_trained_model=True):
+    def __init__(self):
         """Initialize the scraping orchestrator"""
         self.browser = None
-        self.storage = DataStorage()
         self.utils = RandomUtils()
-        
-        # Initialize enhanced analyzer with trained model
-        self.analyzer = EnhancedConfigurableAnalyzer(
-            config_path="config/analyzer_config.yaml",
-            template_path="config/enhanced_training_templates.yaml"
-        )
-        
-        # Load trained model
-        if use_trained_model:
-            if self.analyzer.load_model():
-                print("✅ Trained ML model loaded successfully")
-                self.model_loaded = True
-            else:
-                print("⚠️ No trained model found, using enhanced rule-based analysis")
-                self.model_loaded = False
-        else:
-            print("ℹ️ Using rule-based analysis only")
-            self.model_loaded = False
+        self.analyzer = ConfigurableAnalyzer(config_path="config/analyzer_config.yaml")
         
         # Scraping statistics
         self.session_stats = {
@@ -50,9 +35,6 @@ class ScrapingOrchestrator:
             'total_pages': 0,
             'sites_scraped': 0,
             'queries_processed': 0,
-            'pagination_detected': 0,
-            'infinite_scroll_detected': 0,
-            'last_page_detected': 0,
             'errors': 0
         }
         
@@ -141,8 +123,55 @@ class ScrapingOrchestrator:
         
         return all_results
     
+    def _verify_page_and_recover(self, site_name: str) -> bool:
+        """
+        Verifies if the page is a honeypot (e.g., has empty product skeletons).
+        If it is, it attempts to recover by navigating to the next page number.
+        Returns True if the page is valid, False if recovery was attempted.
+        """
+        site_selectors = self.analyzer.get_site_selectors(site_name)
+        if not site_selectors:
+            return True # Cannot verify without selectors
+
+        container_selector = site_selectors.get('product_container')
+        if not container_selector:
+            return True # Cannot verify without container selector
+
+        try:
+            product_containers = self.browser.driver.find_elements(By.CSS_SELECTOR, container_selector)
+
+            if not product_containers:
+                # No containers found, it's a genuinely empty page.
+                return True
+
+            # Check if all containers are empty (skeletons)
+            non_empty_containers = 0
+            for container in product_containers:
+                if container.text.strip():
+                    non_empty_containers += 1
+            
+            if non_empty_containers == 0:
+                # All containers are empty, this is a honeypot.
+                print("🍯 Honeypot detected (found product skeletons but no content). Attempting recovery...")
+                
+                current_url = self.browser.driver.current_url
+                next_url = self._get_next_page_url(current_url)
+                
+                print(f"➡️ Navigating to recovered URL: {next_url}")
+                self.browser.navigate_to(next_url)
+                time.sleep(3) # Wait for new page to load
+                
+                return False # Signal that recovery was attempted
+            
+            # Page has containers with content, it's valid.
+            return True
+
+        except Exception as e:
+            print(f"⚠️ Error during page verification: {e}")
+            return True # Assume valid on error
+
     def _scrape_query(self, site_name, query, max_pages, scroll_depth, delay_range):
-        """Scrape a single query using intelligent pagination detection"""
+        """Scrape a single query for a given site."""
         
         # Build URL based on site
         if site_name == 'tokopedia':
@@ -158,78 +187,47 @@ class ScrapingOrchestrator:
         self.browser.navigate_to(url)
         time.sleep(3)
         
-        # Reset analyzer state
-        self.analyzer.reset_state()
-        
         all_products = []
         page_num = 1
-        consecutive_failures = 0
         
         while page_num <= max_pages:
             print(f"📄 Processing page {page_num}...")
             
             try:
-                # Scroll to load content
                 self._perform_scroll(scroll_depth)
                 
-                # Extract products from current page
                 page_products = self._extract_products(site_name)
                 
                 if page_products:
                     all_products.extend(page_products)
-                    consecutive_failures = 0
                     print(f"✅ Found {len(page_products)} products on page {page_num}")
                 else:
-                    consecutive_failures += 1
-                    print(f"⚠️ No products found on page {page_num}")
-                    
-                    if consecutive_failures >= 2:
-                        print("🏁 Multiple pages with no products, ending")
+                    # No products found, check if it's a honeypot or just an empty page
+                    is_valid_page = self._verify_page_and_recover(site_name)
+                    if not is_valid_page:
+                        # Recovery was attempted, re-run loop on the new page
+                        print("🔄 Re-processing page after recovery attempt.")
+                        # Do not increment page_num, just continue the loop
+                        continue
+                    else:
+                        # Genuinely empty page, not a honeypot
+                        print("🏁 No products found. Assuming end of results.")
                         break
-                
-                # Use enhanced analyzer for intelligent navigation
-                page_type = self.analyzer.analyze_page_structure(
-                    self.browser.driver, 
-                    site_name=site_name
-                )
-                
-                print(f"🧠 ML Analysis: {page_type}")
-                
-                # Update statistics
-                if page_type == 'pagination':
-                    self.session_stats['pagination_detected'] += 1
-                elif page_type == 'infinite_scroll':
-                    self.session_stats['infinite_scroll_detected'] += 1
-                elif page_type == 'last_page':
-                    self.session_stats['last_page_detected'] += 1
-                
-                # Handle navigation based on detected type
-                if page_type == 'pagination':
-                    if not self._handle_pagination():
-                        print("🏁 No more pages available")
-                        break
-                elif page_type == 'infinite_scroll':
-                    if not self._handle_infinite_scroll():
-                        print("🏁 Reached end of infinite scroll")
-                        break
-                elif page_type == 'last_page':
-                    print("🏁 Last page detected")
+
+                # After successfully scraping a page (or recovering), handle pagination
+                if not self._handle_pagination():
+                    print("🏁 No more pages available or pagination failed.")
                     break
                 
                 page_num += 1
                 self.session_stats['total_pages'] += 1
-                
-                # Random delay
-                delay = self.utils.random_delay(delay_range[0], delay_range[1])
-                time.sleep(delay)
+                time.sleep(self.utils.random_delay(delay_range[0], delay_range[1]))
                 
             except Exception as e:
                 print(f"⚠️ Error on page {page_num}: {e}")
-                consecutive_failures += 1
-                if consecutive_failures >= 3:
-                    print("❌ Too many consecutive failures, stopping")
-                    break
-                continue
+                import traceback
+                traceback.print_exc()
+                break # Exit loop on page error
         
         return all_products
     
@@ -243,156 +241,45 @@ class ScrapingOrchestrator:
             print(f"⚠️ Scrolling error: {e}")
     
     def _extract_products(self, site_name):
-        """Extract products based on site-specific selectors"""
+        """Extract products using selectors from the configuration file."""
         products = []
+        site_selectors = self.analyzer.get_site_selectors(site_name)
+
+        if not site_selectors:
+            print(f"❌ No selectors found for site: {site_name}")
+            return products
+
+        container_selector = site_selectors.get('product_container')
+        if not container_selector:
+            print(f"❌ Missing 'product_container' selector for site: {site_name}")
+            return products
         
         try:
-            if site_name == 'tokopedia':
-                # Use Tokopedia-specific selectors from your original script
-                product_items = self.browser.driver.find_elements(By.XPATH, './/*[contains(@class, "css-5wh65g")]')
-                
-                for item in product_items:
-                    try:
-                        product = self._extract_tokopedia_product(item)
-                        if product:
-                            products.append(product)
-                    except Exception as e:
-                        continue
-                        
-            elif site_name == 'shopee':
-                # Shopee-specific selectors
-                product_items = self.browser.driver.find_elements(By.CSS_SELECTOR, '[data-sqe="item"]')
-                
-                for item in product_items:
-                    try:
-                        product = self._extract_shopee_product(item)
-                        if product:
-                            products.append(product)
-                    except Exception as e:
-                        continue
+            product_items = self.browser.driver.find_elements(By.CSS_SELECTOR, container_selector)
             
+            for item in product_items:
+                product = {}
+                details_selectors = site_selectors.get('product_details', {})
+                for key, selector in details_selectors.items():
+                    try:
+                        element = item.find_element(By.CSS_SELECTOR, selector)
+                        if key == 'link':
+                            product[key] = element.get_attribute('href')
+                        else:
+                            product[key] = element.text
+                    except Exception:
+                        product[key] = "N/A"
+                
+                # Add product only if it has a name
+                if product.get('name', 'N/A') != 'N/A':
+                    product['scraped_at'] = datetime.now().isoformat()
+                    product['site'] = site_name
+                    products.append(product)
+
         except Exception as e:
-            print(f"❌ Error extracting products: {e}")
+            print(f"❌ Error extracting products with selector '{container_selector}': {e}")
         
         return products
-    
-    def _extract_tokopedia_product(self, item):
-        """Extract Tokopedia product using your existing selectors"""
-        from selenium.webdriver.common.by import By
-        
-        product = {}
-        
-        try:
-            # Product Link
-            try:
-                link_element = item.find_element(By.XPATH, './/a[contains(@href, "/")]')
-                href = link_element.get_attribute('href')
-                product['Link Product'] = href if href and "tokopedia.com" in href else "N/A"
-            except:
-                product['Link Product'] = "N/A"
-            
-            # Product Name
-            try:
-                product['Product Name'] = item.find_element(By.XPATH, './/*[contains(@class,"tnoqZhn89")]').text
-            except:
-                product['Product Name'] = "N/A"
-            
-            # Product Price
-            try:
-                product['Price'] = item.find_element(By.XPATH, './/*[contains(@class, "urMOIDHH7")]').text
-            except:
-                product['Price'] = "N/A"
-            
-            # Discount and Before Discount Price
-            try:
-                discount_element = item.find_element(By.XPATH, './/*[contains(@class, "discount")]')
-                product['discount'] = discount_element.text
-                
-                before_discount_element = item.find_element(By.XPATH, './/*[contains(@class, "before-discount")]')
-                product['Before Discount Price'] = before_discount_element.text
-            except:
-                product['discount'] = "N/A"
-                product['Before Discount Price'] = "N/A"
-            
-            # Product Sold
-            try:
-                product_sell = item.find_element(By.XPATH, './/*[contains(text(), "terjual")]').text
-                if product_sell == "":
-                    product['Sold'] = "0 sold"
-                else:
-                    num = product_sell.split()[0]
-                    product['Sold'] = f"{num} sold"
-            except:
-                product['Sold'] = "0 Sold"
-            
-            # Shop Name
-            try:
-                product['Shop Name'] = item.find_element(By.XPATH, './/*[contains(@class, "si3CNdiG8AR0EaXvf6bFbQ")]').text
-            except:
-                product['Shop Name'] = "N/A"
-            
-            # Product Rating
-            try:
-                product['Rating'] = item.find_element(By.XPATH, './/*[contains(@class, "55aCJ8bEsyw")]').text
-            except:
-                product['Rating'] = "N/A"
-            
-            # Product Location
-            try:
-                location_elements = item.find_elements(By.XPATH, './/*[contains(@class, "location")]')
-                location_texts = [elem.text for elem in location_elements if elem.text.strip()]
-                product['location'] = " | ".join(location_texts) if location_texts else "N/A"
-            except:
-                product['location'] = "N/A"
-            
-            # Add metadata
-            product['scraped_at'] = datetime.now().isoformat()
-            product['site'] = 'tokopedia'
-            
-            return product
-            
-        except Exception as e:
-            return None
-    
-    def _extract_shopee_product(self, item):
-        """Extract Shopee product (basic implementation)"""
-        from selenium.webdriver.common.by import By
-        
-        product = {}
-        
-        try:
-            # Basic Shopee selectors (you can enhance these)
-            try:
-                product['Product Name'] = item.find_element(By.CSS_SELECTOR, '[data-sqe="name"]').text
-            except:
-                product['Product Name'] = "N/A"
-            
-            try:
-                product['Price'] = item.find_element(By.CSS_SELECTOR, '[class*="price"]').text
-            except:
-                product['Price'] = "N/A"
-            
-            try:
-                product['Shop Name'] = item.find_element(By.CSS_SELECTOR, '[class*="shop"]').text
-            except:
-                product['Shop Name'] = "N/A"
-            
-            # Add standard fields for consistency
-            product['Sold'] = "N/A"
-            product['discount'] = "N/A"
-            product['Before Discount Price'] = "N/A"
-            product['Rating'] = "N/A"
-            product['location'] = "N/A"
-            product['Link Product'] = "N/A"
-            
-            # Add metadata
-            product['scraped_at'] = datetime.now().isoformat()
-            product['site'] = 'shopee'
-            
-            return product
-            
-        except Exception as e:
-            return None
     
     def _handle_pagination(self):
         """Handle pagination navigation"""
@@ -418,23 +305,6 @@ class ScrapingOrchestrator:
                 continue
         
         return False
-    
-    def _handle_infinite_scroll(self, max_rounds=3):
-        """Handle infinite scroll"""
-        last_height = self.browser.driver.execute_script("return document.body.scrollHeight")
-        
-        for round_num in range(max_rounds):
-            self.browser.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(self.utils.random_delay(1, 2))
-            
-            new_height = self.browser.driver.execute_script("return document.body.scrollHeight")
-            
-            if new_height == last_height:
-                return False
-            else:
-                last_height = new_height
-        
-        return True
     
     def _save_batch_results(self, results, config):
         """Save batch results in multiple formats"""
@@ -505,11 +375,6 @@ class ScrapingOrchestrator:
         print(f"Total products: {self.session_stats['total_products']}")
         print(f"Errors: {self.session_stats['errors']}")
         
-        print(f"\n🧠 ML ANALYSIS BREAKDOWN:")
-        print(f"Pagination detected: {self.session_stats['pagination_detected']}")
-        print(f"Infinite scroll detected: {self.session_stats['infinite_scroll_detected']}")
-        print(f"Last page detected: {self.session_stats['last_page_detected']}")
-        
         if self.session_stats['total_pages'] > 0:
             avg_products_per_page = self.session_stats['total_products'] / self.session_stats['total_pages']
             print(f"Average products per page: {avg_products_per_page:.1f}")
@@ -519,6 +384,43 @@ class ScrapingOrchestrator:
         if self.browser:
             self.browser.close()
             print("✅ Browser closed")
+
+    def _get_next_page_url(self, current_url: str) -> str:
+        """
+        Intelligently increments the page number in a URL.
+        Handles 'page=X', 'p=X', and the non-standard '{page=X}'.
+        If no page parameter is found, it adds '&page=2'.
+        """
+        import re
+        
+        # Regex to find 'page=...' or 'p=...'
+        match = re.search(r'(page|p)=(\d+)', current_url)
+        
+        if match:
+            param_name = match.group(1)
+            page_num = int(match.group(2))
+            next_page_num = page_num + 1
+            
+            # Replace the old page number with the new one
+            old_param = f"{param_name}={page_num}"
+            new_param = f"{param_name}={next_page_num}"
+            return current_url.replace(old_param, new_param, 1)
+        
+        # Handle the non-standard {page=...} format
+        match_special = re.search(r'{page=(\d+)}', current_url)
+        if match_special:
+            page_num = int(match_special.group(1))
+            next_page_num = page_num + 1
+
+            old_param = f"{{page={page_num}}}"
+            new_param = f"{{page={next_page_num}}}"
+            return current_url.replace(old_param, new_param, 1)
+
+        # If no page parameter is found, assume page 1 and add page=2
+        if '?' in current_url:
+            return f"{current_url}&page=2"
+        else:
+            return f"{current_url}?page=2"
 
 
 def load_scraping_config():
@@ -560,7 +462,7 @@ def load_scraping_config():
 
 def main():
     """Main scraping orchestrator function"""
-    print("🕷️ Enhanced Scraping Orchestrator")
+    print("🕷️ Simple Scraping Orchestrator")
     print("=" * 60)
     
     # Load configuration
@@ -572,21 +474,17 @@ def main():
     print(f"Output formats: {config['output_format']}")
     
     # Ask for confirmation or modification
-    proceed = input("\n🚀 Proceed with this configuration? (y/n/edit): ").lower().strip()
+    proceed = input("\n🚀 Proceed with this configuration? (y/n): ").lower().strip()
     
-    if proceed == 'edit':
-        print("📝 Edit configuration in scraping_config.json and restart")
-        return
-    elif proceed != 'y':
+    if proceed != 'y':
         print("👋 Cancelled")
         return
     
     # Additional settings
     use_headless = input("🖥️ Run in headless mode? (y/n, default n): ").lower().strip() == 'y'
-    use_trained_model = input("🧠 Use trained ML model? (y/n, default y): ").lower().strip() != 'n'
     
     # Initialize orchestrator
-    orchestrator = ScrapingOrchestrator(use_trained_model=use_trained_model)
+    orchestrator = ScrapingOrchestrator()
     
     try:
         # Setup browser

@@ -1,0 +1,21 @@
+sites:
+  tokopedia:
+    product_container: '[class*="css-5wh65g"]'
+    product_details:
+      name: '[data-testid="spnSRPProdName"]'
+      price: '[data-testid="spnSRPProdPrice"]'
+      link: 'a[data-testid="linkSRP"]'
+      shop_name: '[data-testid="spnSRPShopName"]'
+      shop_location: '[data-testid="spnSRPShopLocation"]'
+      sold_count: '[data-testid="spnSRPProdTab"]'
+      rating: '[data-testid="spnSRPProdRating"]'
+  shopee:
+    product_container: '[data-sqe="item"]'
+    product_details:
+      name: '[data-sqe="name"]'
+      price: '._3c5u7X'
+      link: 'a'
+      shop_name: '._1_K8f_ '
+      shop_location: '._2CWevC'
+      sold_count: '._35s3_6'
+      rating: '.shopee-rating-stars__star-wrapper'
