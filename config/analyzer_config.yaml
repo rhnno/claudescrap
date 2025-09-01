@@ -1,86 +1,21 @@
-debug:
-  feature_summary: true
-  save_features: true
-  verbose: true
-features:
-  selectors:
-    lazy_load_elements:
-    - '[data-lazy]'
-    - '[loading=''lazy'']'
-    - .lazy
-    - .skeleton
-    - .shimmer
-    - .loading-placeholder
-    load_more_buttons:
-    - //*[contains(text(), 'Load More')]
-    - //*[contains(text(), 'Show More')]
-    - //*[contains(text(), 'Muat')]
-    - //*[contains(text(), 'Tampilkan Lebih')]
-    next_buttons:
-    - //*[contains(text(), 'Next')]
-    - //*[contains(text(), 'next')]
-    - "//*[contains(text(), '\u203A')]"
-    - "//*[contains(text(), '\u2192')]"
-    - //*[contains(@aria-label, 'next')]
-    pagination_buttons:
-    - button[class*='pagination']
-    - a[class*='pagination']
-    - .pagination button
-    - .pagination a
-    - '[aria-label*=''pagination'']'
-    product_elements:
-    - '[class*=''product'']'
-    - '[class*=''item'']'
-    - '[data-testid*=''product'']'
-    - .product-card
-    - .item-card
-  text_analysis:
-    end_of_results_patterns:
-    - no\s+more\s+results
-    - end\s+of\s+results
-    - end\s+of\s+page
-    - tidak\s+ada\s+hasil\s+lagi
-    - hasil\s+pencarian\s+habis
-    - semua\s+produk\s+telah\s+ditampilkan
-    - no\s+more\s+items
-    - that\'s\s+all\s+folks
-    max_tfidf_features: 100
-    stop_words: english
-  thresholds:
-    confidence_threshold: 0.7
-    consecutive_infinite_limit: 5
-    footer_threshold_ratio: 0.8
-    max_infinite_scroll_rounds: 10
-    scroll_bottom_threshold: 0.95
-paths:
-  model_dir: models
-  model_file: pagination_model.pkl
-  training_data_file: models/training_data.csv
-  vectorizer_file: pagination_vectorizer.pkl
 sites:
-  amazon:
-    base_url: https://www.amazon.com/s?k={query}
-    language: english
-    patterns:
-      end_results:
-      - no more results
-      - end of results
-      page_text:
-      - page
-      - results
   tokopedia:
-    base_url: https://www.tokopedia.com/search?q={query}
-    language: indonesian
-    patterns:
-      end_results:
-      - tidak ada hasil lagi
-      - hasil pencarian habis
-      page_text:
-      - halaman
-      - produk
-training:
-  auto_collect_samples: true
-  n_estimators: 100
-  random_state: 42
-  samples_per_site: 20
-  test_size: 0.2
+    product_container: '[class*="css-5wh65g"]'
+    product_details:
+      name: '[data-testid="spnSRPProdName"]'
+      price: '[data-testid="spnSRPProdPrice"]'
+      link: 'a[data-testid="linkSRP"]'
+      shop_name: '[data-testid="spnSRPShopName"]'
+      shop_location: '[data-testid="spnSRPShopLocation"]'
+      sold_count: '[data-testid="spnSRPProdTab"]'
+      rating: '[data-testid="spnSRPProdRating"]'
+  shopee:
+    product_container: '[data-sqe="item"]'
+    product_details:
+      name: '[data-sqe="name"]'
+      price: '._3c5u7X'
+      link: 'a'
+      shop_name: '._1_K8f_ '
+      shop_location: '._2CWevC'
+      sold_count: '._35s3_6'
+      rating: '.shopee-rating-stars__star-wrapper'
