@@ -1,102 +1,161 @@
-# Scraper Analysis & Dashboard Scaling Summary
+# Scraping Project Agent Guide
 
-## 🔍 Current Scraper Deficiencies
+## Project Status: Phase 1 - Core Refactoring (50% Complete)
 
-### 1. Architecture Issues
-- **Monolithic Design**: Everything in one class, hard to scale
-- **No Database**: Only file outputs, no persistent storage
-- **Synchronous Only**: Blocks during scraping, can't handle multiple requests
-- **No API Layer**: Direct file execution only
+### ✅ Completed Tasks
 
-### 2. Scalability Problems
-- **Single Browser Instance**: Can't handle concurrent scraping
-- **Memory Leaks**: Chrome profiles accumulate data indefinitely
-- **No Queue System**: Can't manage multiple scraping jobs
-- **Hard-coded Selectors**: Tokopedia-specific, not extensible
+#### 1. Separated Concerns
+- **Database Layer**: `src/models/database.py` - SQLAlchemy models (ScrapingJob, Product)
+- **Service Layer**: `src/services/scraper_service.py` - Business logic separated from presentation
+- **API Layer**: `src/api/scraping_api.py` - FastAPI REST endpoints
+- **Utils**: Browser management and utilities maintained
 
-### 3. Production Gaps
-- **No Authentication**: Anyone can run scraping
-- **No Rate Limiting**: Could overwhelm target sites
-- **No Error Recovery**: Crashes stop entire process
-- **No Progress Tracking**: Can't monitor job status
-- **No Resource Management**: Browser processes may hang
+#### 2. Async Job Processing
+- **Background Tasks**: Implemented with `asyncio.create_task()`
+- **Job Tracking**: Running jobs stored in memory dictionary
+- **Status Updates**: Real-time job status in database
+- **Job Control**: Start, stop, and list job endpoints
 
-### 4. Dashboard Requirements Missing
-- **No REST API**: Can't trigger scraping remotely
-- **No Real-time Updates**: Can't show live progress
-- **No Job History**: Can't track past scraping sessions
-- **No Configuration UI**: Must edit JSON files manually
+#### 3. Database Layer
+- **Models**: ScrapingJob and Product tables with relationships
+- **Manager**: DatabaseManager with session handling
+- **Operations**: Create, update, query jobs and products
+- **Storage**: SQLite default, PostgreSQL ready
 
-## 🚀 Dashboard Architecture Suggestions
+#### 4. Security Implementation
+- **Authentication**: JWT Bearer token authentication
+- **CORS**: Configured for specific domains
+- **Host Protection**: TrustedHostMiddleware
+- **Input Validation**: Pydantic models
 
-### Backend (FastAPI/Flask)
-```
-/api/scraping/start    - Start new scraping job
-/api/scraping/status   - Get job progress
-/api/scraping/results  - Download results
-/api/scraping/history  - View past jobs
-```
+### 🔄 Current Architecture
 
-### Database Schema
-- **Jobs Table**: job_id, status, progress, config
-- **Products Table**: product_id, name, price, url, job_id
-- **Sites Table**: site configs and selectors
-
-### Key Improvements Needed
-1. **Async Task Queue** (Celery/RQ) for background jobs
-2. **Database Integration** (PostgreSQL)
-3. **WebSocket** for real-time progress updates
-4. **Docker Containerization** for scalability
-5. **Redis Caching** for session management
-6. **Proxy Rotation** for bot detection avoidance
-
-### Quick Wins
-- Extract `ScrapingOrchestrator` into service layer
-- Add database models with SQLAlchemy
-- Implement job queue with status tracking
-- Create REST API endpoints
-- Add configuration management UI
-
-## 📋 Implementation Priority
-**Priority**: Fix architecture first, then build dashboard layer on top.
-
-### Phase 1: Core Refactoring
-1. Separate concerns (scraper, database, API)
-2. Add async job processing
-3. Implement database layer
-
-### Phase 2: API Development
-1. Create REST endpoints
-2. Add authentication
-3. Implement real-time updates
-
-### Phase 3: Dashboard UI
-1. Build web interface
-2. Add job management
-3. Create monitoring dashboard
-
-## 🎯 Target Dashboard URL
-`mydomain.example/dashboard/scraping`
-
-## 📁 Current File Structure
 ```
 src/
-├── ace.py                 # Main scraper (needs refactoring)
+├── api/
+│   └── scraping_api.py          # FastAPI endpoints with auth
+├── models/
+│   └── database.py              # SQLAlchemy models + manager
+├── services/
+│   ├── scraper_service.py       # Core scraping logic (ACTIVE)
+│   └── advanced_scraper_service.py  # Enhanced version (NOT USED)
 ├── utils/
-│   ├── browser.py        # Browser management
-│   └── utils.py          # Random utilities
-config/
-├── config.ini            # Basic config
-└── login_credentials.json
-raw/                      # Output directory
-├── product_csv/
-├── product_excel/
-└── product_json/
+│   ├── browser.py               # Browser management
+│   └── utils.py                 # Random utilities
+└── ace.py                       # Original monolithic scraper
 ```
 
-## 🔧 Recommended Tech Stack
-- **Backend**: FastAPI + SQLAlchemy + Celery
-- **Database**: PostgreSQL + Redis
-- **Frontend**: React/Vue.js + WebSocket
-- **Deployment**: Docker + Nginx
-- **Monitoring**: Prometheus + Grafana
+### 🚀 API Endpoints
+
+```
+POST /api/scraping/start         # Start scraping job
+GET  /api/scraping/status/{id}   # Get job status
+POST /api/scraping/stop/{id}     # Stop running job
+GET  /api/scraping/jobs          # List all jobs
+GET  /health                     # Health check
+```
+
+### 🔧 Current Issues & Next Steps
+
+#### Issues to Fix:
+1. **Browser Setup**: `setup_browser()` vs `setup_driver()` method mismatch
+2. **Import Errors**: Some database model imports need fixing
+3. **Error Handling**: Basic error handling, needs improvement
+4. **Resource Management**: No browser cleanup on job completion
+
+#### Phase 1 Remaining (50%):
+1. **Fix Browser Integration**: Resolve method name mismatches
+2. **Improve Error Handling**: Better exception management
+3. **Resource Cleanup**: Proper browser session management
+4. **Testing**: Unit tests for core components
+5. **Documentation**: API documentation with examples
+
+### 📋 Phase 2 Preview: API Development
+- WebSocket for real-time updates
+- Rate limiting and throttling
+- Advanced authentication (roles, permissions)
+- Metrics and monitoring endpoints
+- Bulk operations support
+
+### 📋 Phase 3 Preview: Dashboard UI
+- React/Vue.js frontend
+- Real-time job monitoring
+- Configuration management UI
+- Data visualization and exports
+- User management interface
+
+### 🛠️ Development Guidelines
+
+#### File Organization:
+- **Models**: Database schemas and relationships
+- **Services**: Business logic, no direct HTTP handling
+- **API**: HTTP endpoints, authentication, validation
+- **Utils**: Shared utilities and helpers
+
+#### Code Standards:
+- **Async/Await**: Use async for I/O operations
+- **Type Hints**: Add type annotations
+- **Error Handling**: Proper exception handling with logging
+- **Documentation**: Docstrings for all public methods
+
+#### Security Requirements:
+- **Authentication**: JWT required for all scraping endpoints
+- **CORS**: Restrict to known domains
+- **Input Validation**: Validate all user inputs
+- **Rate Limiting**: Implement in Phase 2
+
+### 🔍 Current Configuration
+
+#### Database:
+- **Default**: SQLite (`scraping.db`)
+- **Production**: Set `DATABASE_URL` environment variable
+- **Models**: Auto-created on first run
+
+#### Authentication:
+- **JWT Secret**: Set `JWT_SECRET_KEY` environment variable
+- **Algorithm**: HS256
+- **Required**: All endpoints except `/health`
+
+#### Browser:
+- **Manager**: `BrowserManager` class
+- **Profile**: Chrome research profile for stealth
+- **Cleanup**: Manual cleanup required (needs improvement)
+
+### 📝 Usage Examples
+
+#### Start API:
+```bash
+export JWT_SECRET_KEY="your-secret-key"
+python run_api.py
+```
+
+#### Generate JWT:
+```python
+import jwt
+token = jwt.encode({"sub": "user123"}, "your-secret-key", algorithm="HS256")
+```
+
+#### API Call:
+```bash
+curl -H "Authorization: Bearer <token>" \
+     -H "Content-Type: application/json" \
+     -X POST http://localhost:8000/api/scraping/start \
+     -d '{"site": "tokopedia", "query": "laptop", "max_pages": 3}'
+```
+
+### 🎯 Success Metrics
+
+#### Phase 1 Goals:
+- [x] Separated concerns (database, service, API)
+- [x] Basic async job processing
+- [x] Database persistence
+- [x] REST API with authentication
+- [ ] Stable browser integration
+- [ ] Proper error handling
+- [ ] Resource cleanup
+
+#### Target: Complete Phase 1 before moving to Phase 2
+
+---
+
+*Last Updated: Current session - Phase 1 refactoring in progress*
