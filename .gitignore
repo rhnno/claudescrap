@@ -58,3 +58,4 @@ acli.exe
 # Temporary Files
 tmp_*
 temp_*
+data/raw/reviews.csv
