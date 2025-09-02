@@ -339,9 +339,9 @@ class ScrapingOrchestrator:
         
         # Create directories if they don't exist
         directories = {
-            'csv': 'raw/product_csv',
-            'excel': 'raw/product_excel', 
-            'json': 'raw/product_json'
+            'csv': 'data/raw/product_csv',
+            'excel': 'data/raw/product_excel', 
+            'json': 'data/raw/product_json'
         }
         
         for format_type, directory in directories.items():
