@@ -4,13 +4,15 @@ import uuid
 from datetime import datetime
 from src.models.database import DatabaseManager
 from src.utils.browser import BrowserManager
-from src.utils.utils import Utils
+from src.utils.utils import RandomUtils as Utils
+from src.models.database import ScrapingJob
 import time
 
 class ScraperService:
     def __init__(self):
         self.db = DatabaseManager()
         self.utils = Utils()
+        self.running_jobs = {}  # Track running jobs for stopping
     
     async def start_scraping_job(self, site, query, max_pages=5):
         """Start async scraping job"""
@@ -19,8 +21,9 @@ class ScraperService:
         # Create job in database
         job = self.db.create_job(job_id, site, query)
         
-        # Start async scraping
-        asyncio.create_task(self._execute_scraping(job_id, site, query, max_pages))
+        # Start async scraping and track the task
+        task = asyncio.create_task(self._execute_scraping(job_id, site, query, max_pages))
+        self.running_jobs[job_id] = task
         
         return job_id
     
@@ -30,7 +33,7 @@ class ScraperService:
             self.db.update_job_status(job_id, 'running')
             
             browser = BrowserManager()
-            browser.setup_browser()
+            browser.setup_driver()
             
             all_products = []
             
@@ -57,7 +60,7 @@ class ScraperService:
                 self.db.update_job_status(job_id, 'running', products_found=len(all_products))
                 
                 # Random delay
-                await asyncio.sleep(self.utils.random_delay(2, 4))
+                await asyncio.sleep(self.utils.random_delay(1, 2))
             
             # Complete job
             self.db.update_job_status(
@@ -129,7 +132,7 @@ class ScraperService:
         """Get job status from database"""
         session = self.db.get_session()
         try:
-            job = session.query(self.db.ScrapingJob).filter(self.db.ScrapingJob.job_id == job_id).first()
+            job = session.query(ScrapingJob).filter(ScrapingJob.job_id == job_id).first()
             if job:
                 return {
                     'job_id': job.job_id,
@@ -141,5 +144,46 @@ class ScraperService:
                     'error_message': job.error_message
                 }
             return None
+        finally:
+            session.close()
+    
+    async def stop_scraping_job(self, job_id):
+        """Stop a running scraping job"""
+        if job_id in self.running_jobs:
+            task = self.running_jobs[job_id]
+            task.cancel()
+            
+            # Update job status in database
+            self.db.update_job_status(
+                job_id, 
+                'stopped', 
+                completed_at=datetime.utcnow(),
+                error_message="Job stopped by user"
+            )
+            
+            # Remove from running jobs
+            del self.running_jobs[job_id]
+            return True
+        
+        return False
+    
+    def list_jobs(self):
+        """List all scraping jobs"""
+        from src.models.database import ScrapingJob
+        session = self.db.get_session()
+        try:
+            jobs = session.query(ScrapingJob).order_by(ScrapingJob.created_at.desc()).limit(50).all()
+            return [{
+                'job_id': job.job_id,
+                'status': job.status,
+                'site': job.site,
+                'query': job.query,
+                'current_page': job.current_page,
+                'total_pages': job.total_pages,
+                'products_found': job.products_found,
+                'created_at': job.created_at,
+                'completed_at': job.completed_at,
+                'error_message': job.error_message
+            } for job in jobs]
         finally:
             session.close()
