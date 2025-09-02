@@ -128,7 +128,7 @@ class ScrapingOrchestrator:
         # Build URL based on site
         if site_name == 'tokopedia':
             search_query_url = query.replace(' ', '%20')
-            url = f"https://www.tokopedia.com/search?st=product&q={search_query_url}"
+            url = f"https://www.tokopedia.com/search?st=product&q={search_query_url}&page=1"
         elif site_name == 'shopee':
             url = f"https://shopee.co.id/search?keyword={query}"
         else:
@@ -148,23 +148,30 @@ class ScrapingOrchestrator:
             try:
                 self._perform_scroll(scroll_depth)
                 
-                page_products = [] # Dummy data
+                # Extract products from current page
+                page_products = self._extract_products_from_page()
                 
                 if page_products:
                     all_products.extend(page_products)
-                    print(f"✅ Found {len(page_products)} products on page {page_num}")
+                    valid_products = [p for p in page_products if p.get('name') != "Name not found"]
+                    print(f"✅ Found {len(valid_products)} valid products on page {page_num} (total extracted: {len(page_products)})")
+                    
+                    # Increment page number and stats BEFORE pagination
+                    page_num += 1
+                    self.session_stats['total_pages'] += 1
+                    
+                    # Only try pagination if we haven't reached max pages
+                    if page_num <= max_pages:
+                        if not self._handle_pagination():
+                            print("🏁 No more pages available or pagination failed.")
+                            break
+                        time.sleep(self.utils.random_delay(delay_range[0], delay_range[1]))
+                    else:
+                        print(f"🏁 Reached maximum pages ({max_pages})")
+                        break
                 else:
                     print("🏁 No products found. Assuming end of results.")
                     break
-
-                # After successfully scraping a page (or recovering), handle pagination
-                if not self._handle_pagination():
-                    print("🏁 No more pages available or pagination failed.")
-                    break
-                
-                page_num += 1
-                self.session_stats['total_pages'] += 1
-                time.sleep(self.utils.random_delay(delay_range[0], delay_range[1]))
                 
             except Exception as e:
                 print(f"⚠️ Error on page {page_num}: {e}")
@@ -183,36 +190,163 @@ class ScrapingOrchestrator:
         except Exception as e:
             print(f"⚠️ Scrolling error: {e}")
     
+    def _extract_products_from_page(self):
+        """Extract products from current page"""
+        try:
+            from selenium.webdriver.common.by import By
+            from selenium.common.exceptions import NoSuchElementException
+            
+            products = []
+            
+            # Updated Tokopedia product selectors based on current structure
+            product_selectors = [
+                'div[class="css-5wh65g"]'
+            ]
+            
+            product_elements = []
+            for selector in product_selectors:
+                try:
+                    elements = self.browser.driver.find_elements(By.CSS_SELECTOR, selector)
+                    if elements:
+                        product_elements = elements
+                        print(f"✅ Found {len(elements)} products using selector: {selector}")
+                        break
+                except:
+                    continue
+            
+            if not product_elements:
+                print("⚠️ No product elements found with any selector")
+                return []
+            
+            for element in product_elements[:60]:  # Limit to first 60 products per page
+                try:
+                    product = {}
+                    
+                    # Extract product name with multiple selector fallbacks
+                    name_selectors = [
+                        'span[class="+tnoqZhn89+NHUA43BpiJg=="]'
+                    ]
+                    
+                    product['name'] = "Name not found"
+                    for name_selector in name_selectors:
+                        try:
+                            name_elem = element.find_element(By.CSS_SELECTOR, name_selector)
+                            if name_elem.text.strip():
+                                product['name'] = name_elem.text.strip()
+                                break
+                        except:
+                            continue
+                    
+                    # Extract price with multiple selector fallbacks
+                    price_selectors = [
+                        'div[class="urMOIDHH7I0Iy1Dv2oFaNw=="]'
+                    ]
+                    
+                    product['price'] = "Price not found"
+                    for price_selector in price_selectors:
+                        try:
+                            price_elem = element.find_element(By.CSS_SELECTOR, price_selector)
+                            if price_elem.text.strip():
+                                product['price'] = price_elem.text.strip()
+                                break
+                        except:
+                            continue
+                    
+                    # Extract product URL with multiple approaches
+                    try:
+                        # Try to find the main product link
+                        link_elem = element.find_element(By.CSS_SELECTOR, 'a[href*="/p/"]')
+                        product['url'] = link_elem.get_attribute('href')
+                    except:
+                        try:
+                            # Fallback to any link
+                            link_elem = element.find_element(By.CSS_SELECTOR, 'a')
+                            href = link_elem.get_attribute('href')
+                            if href and 'tokopedia.com' in href:
+                                product['url'] = href
+                            else:
+                                product['url'] = "URL not found"
+                        except:
+                            product['url'] = "URL not found"
+                    
+                    # Only add products with valid names
+                    if product['name'] != "Name not found":
+                        products.append(product)
+                
+                except Exception as e:
+                    print(f"⚠️ Error extracting product: {e}")
+                    continue
+            
+            print(f"✅ Extracted {len(products)} valid products from page")
+            return products
+            
+        except Exception as e:
+            print(f"❌ Product extraction failed: {e}")
+            return []
+    
     
     def _handle_pagination(self):
-        """Handle pagination navigation"""
-        from selenium.webdriver.common.by import By
+        """Handle pagination navigation using URL-based approach only (safer from bot detection)"""
         
-        next_selectors = [
-            "button[aria-label*='Laman berikutnya']",  # Tokopedia Indonesian
-            "button[aria-label*='next'], button[aria-label*='Next']",
-            "a[aria-label*='next'], a[aria-label*='Next']",
-            ".pagination .next:not(.disabled)",
-            "button[class*='next']:not([disabled])"
-        ]
-        
-        for selector in next_selectors:
-            try:
-                elements = self.browser.driver.find_elements(By.CSS_SELECTOR, selector)
-                for element in elements:
-                    if element.is_displayed() and element.is_enabled():
-                        element.click()
-                        time.sleep(2)
-                        return True
-            except:
-                continue
-        
-        return False
+        # URL-based pagination only - no clicking to avoid honeypots
+        try:
+            current_url = self.browser.driver.current_url
+            print(f"🔍 Current URL: {current_url}")
+            
+            next_url = self._get_next_page_url(current_url)
+            print(f"🔍 Next URL: {next_url}")
+            
+            if next_url != current_url:  # Ensure URL actually changed
+                self.browser.navigate_to(next_url)
+                time.sleep(3)  # Longer wait for page load
+                
+                # Verify we actually navigated to the new page
+                final_url = self.browser.driver.current_url
+                print(f"🔍 Final URL after navigation: {final_url}")
+                
+                if final_url != current_url:
+                    print("✅ Pagination via URL manipulation successful")
+                    return True
+                else:
+                    print("⚠️ URL navigation failed - browser stayed on same page")
+                    return False
+            else:
+                print("⚠️ URL pagination failed - no page parameter increment possible")
+                return False
+                
+        except Exception as e:
+            print(f"⚠️ URL pagination failed: {e}")
+            return False
     
     def _save_batch_results(self, results, config):
-        """Save batch results in multiple formats"""
+        """Save batch results in multiple formats with organized directory structure"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_formats = config.get('output_format', ['csv', 'excel'])
+        
+        # **CUSTOMIZE OUTPUT NAME HERE** - Change this line to modify the base filename
+        # Extract query names from results to include in filename
+        query_names = []
+        for site_name, site_data in results.items():
+            for query in site_data.keys():
+                query_names.append(query)
+        
+        # Create filename with query names (limit to first 3 queries to avoid long filenames)
+        if query_names:
+            query_part = "_".join(query_names[:3]).replace(" ", "_")
+            base_filename = f"{query_part}_{timestamp}"
+        else:
+            base_filename = f"batch_scraping_results_{timestamp}"
+        
+        # Create directories if they don't exist
+        directories = {
+            'csv': 'raw/product_csv',
+            'excel': 'raw/product_excel', 
+            'json': 'raw/product_json'
+        }
+        
+        for format_type, directory in directories.items():
+            if format_type in output_formats:
+                os.makedirs(directory, exist_ok=True)
         
         # Flatten results for saving
         all_products = []
@@ -227,9 +361,9 @@ class ScrapingOrchestrator:
             print("⚠️ No products to save")
             return
         
-        # Save in requested formats
+        # Save in requested formats with organized paths
         if 'csv' in output_formats:
-            csv_file = f"batch_scraping_results_{timestamp}.csv"
+            csv_file = f"raw/product_csv/{base_filename}.csv"
             try:
                 df = pd.DataFrame(all_products)
                 df.to_csv(csv_file, index=False, encoding='utf-8')
@@ -238,7 +372,7 @@ class ScrapingOrchestrator:
                 print(f"❌ CSV save failed: {e}")
         
         if 'excel' in output_formats:
-            excel_file = f"batch_scraping_results_{timestamp}.xlsx"
+            excel_file = f"raw/product_excel/{base_filename}.xlsx"
             try:
                 df = pd.DataFrame(all_products)
                 with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
@@ -256,7 +390,7 @@ class ScrapingOrchestrator:
                 print(f"❌ Excel save failed: {e}")
         
         if 'json' in output_formats:
-            json_file = f"batch_scraping_results_{timestamp}.json"
+            json_file = f"raw/product_json/{base_filename}.json"
             try:
                 with open(json_file, 'w', encoding='utf-8') as f:
                     json.dump(results, f, indent=2, ensure_ascii=False)
