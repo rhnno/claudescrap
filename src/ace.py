@@ -462,7 +462,7 @@ class ScrapingOrchestrator:
 
 def load_scraping_config():
     """Load or create scraping configuration"""
-    config_file = "scraping_config.json"
+    config_file = "config/scraping_config.json"
     
     default_config = {
         "sites": [
