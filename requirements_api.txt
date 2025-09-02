@@ -6,3 +6,5 @@ asyncio
 selenium==4.15.2
 pandas==2.1.3
 openpyxl==3.1.2
+PyJWT==2.8.0
+python-multipart==0.0.6
