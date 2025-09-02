@@ -1,10 +1,38 @@
 """FastAPI endpoints for scraping service"""
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 from src.services.scraper_service import ScraperService
 from typing import Optional
+import os
+import jwt
 
 app = FastAPI(title="Scraping API", version="1.0.0")
+
+# CORS Configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://mydomain.example", "http://localhost:3000"],  # Restrict origins
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
+# Trusted Host Protection
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["mydomain.example", "localhost"])
+
+# Security
+security = HTTPBearer()
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "test-secret-123")
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=["HS256"])
+        return payload.get("sub")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid authentication")
 scraper_service = ScraperService()
 
 class ScrapingRequest(BaseModel):
@@ -18,7 +46,7 @@ class ScrapingResponse(BaseModel):
     message: str
 
 @app.post("/api/scraping/start", response_model=ScrapingResponse)
-async def start_scraping(request: ScrapingRequest):
+async def start_scraping(request: ScrapingRequest, user_id: str = Depends(verify_token)):
     """Start a new scraping job"""
     try:
         job_id = await scraper_service.start_scraping_job(
@@ -36,7 +64,7 @@ async def start_scraping(request: ScrapingRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/scraping/status/{job_id}")
-async def get_job_status(job_id: str):
+async def get_job_status(job_id: str, user_id: str = Depends(verify_token)):
     """Get scraping job status"""
     status = scraper_service.get_job_status(job_id)
     
@@ -45,11 +73,26 @@ async def get_job_status(job_id: str):
     
     return status
 
+@app.post("/api/scraping/stop/{job_id}")
+async def stop_scraping_job(job_id: str, user_id: str = Depends(verify_token)):
+    """Stop a running scraping job"""
+    try:
+        result = await scraper_service.stop_scraping_job(job_id)
+        
+        if result:
+            return {"job_id": job_id, "status": "stopped", "message": "Job stopped successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Job not found or already completed")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/scraping/jobs")
-async def list_jobs():
+async def list_jobs(user_id: str = Depends(verify_token)):
     """List all scraping jobs"""
-    # Implementation for listing jobs
-    return {"message": "Jobs list endpoint"}
+    jobs = scraper_service.list_jobs()
+    return {"jobs": jobs}
+
 
 @app.get("/health")
 async def health_check():
