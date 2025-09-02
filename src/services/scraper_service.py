@@ -33,7 +33,14 @@ class ScraperService:
             self.db.update_job_status(job_id, 'running')
             
             browser = BrowserManager()
-            browser.setup_driver()
+            
+            if browser.setup_driver(): 
+                browser.navigate_to()
+                
+            else:
+                raise Exception("Failed to initialize browser")
+                
+
             
             all_products = []
             
