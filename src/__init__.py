@@ -14,7 +14,6 @@ from .utils.utils import RandomUtils
 # The ML-powered analyzer components have been removed as per the user's request.
 
 # Scraper components
-from .scrapers.scraper import SmartTokopediaScraper, EnhancedTokopediaScraper
 
 # Legacy components (if they exist)
 try:
@@ -34,14 +33,6 @@ __all__ = [
     'DataStorage', 
     'RandomUtils',
     
-    # Enhanced ML components
-    # 'ConfigurableAnalyzer',
-    # 'EnhancedConfigurableAnalyzer',
-    # 'TrainingDataCollector',
-    
-    # Scraper components
-    'SmartTokopediaScraper',
-    'EnhancedTokopediaScraper',
 
     # Legacy components (if available)
     'ProductParser',
