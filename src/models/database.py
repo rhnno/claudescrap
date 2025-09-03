@@ -1,12 +1,12 @@
 """Database models and connection management"""
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Float, Boolean
-from sqlalchemy.orm import declarative_base, sessionmaker, DeclarativeBase
+from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 import os
 from typing import Optional, List, Dict, Any
 
-# Create base class with proper typing
-Base: DeclarativeBase = declarative_base()
+# Create base class for SQLAlchemy models
+Base: Any = declarative_base()
 
 class ScrapingJob(Base):
     __tablename__ = 'scraping_jobs'
