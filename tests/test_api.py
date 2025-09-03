@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 import asyncio
 from unittest.mock import patch, Mock, AsyncMock
-from fastapi.testclient import TestClient
+from starlette.testclient import TestClient
 import jwt
 from datetime import datetime
 from src.api.scraping_api import app, scraper_service
@@ -260,11 +260,14 @@ class TestAPISecurityAndMiddleware:
         ]
         
         for method, endpoint in protected_endpoints:
+            response = None  # Initialize response variable
             if method == "GET":
                 response = client.get(endpoint)
             elif method == "POST":
                 response = client.post(endpoint, json={})
             
+            # Ensure response is not None before asserting
+            assert response is not None
             assert response.status_code in [401, 403, 422]  # Unauthorized or validation error
 
 
