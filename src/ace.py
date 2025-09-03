@@ -419,6 +419,7 @@ class ScrapingOrchestrator:
         """Clean up resources"""
         if self.browser:
             self.browser.close()
+            self.browser = None
             print("✅ Browser closed")
 
     def _get_next_page_url(self, current_url: str) -> str:
