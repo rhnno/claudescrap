@@ -382,6 +382,8 @@ class ScraperService:
                     
                     # Update final page count from orchestrator stats
                     page = orchestrator.session_stats.get('total_pages', max_pages)
+                    if page is None:
+                        page = max_pages
                     
                     logger.info(f"✅ ScrapingOrchestrator completed job {job_id}: {len(products)} products from {page} pages")
                 else:

@@ -11,9 +11,45 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 class BrowserManager:
-    """Handles all browser-related operations with persistent profile support"""
+    """Handles all browser-related operations with persistent profile support.
+    
+    This class manages Chrome browser instances with advanced anti-detection features,
+    persistent profile management, and automated login capabilities for e-commerce sites.
+    
+    Attributes:
+        driver (Optional[webdriver.Chrome]): Chrome WebDriver instance
+        wait (Optional[WebDriverWait]): WebDriver wait instance for element waiting
+        use_profile (bool): Whether to use persistent Chrome profile
+        profile_name (str): Name of the Chrome profile to use
+        headless (bool): Whether to run browser in headless mode
+        profile_path (Path): Path to Chrome profile directory
+        credentials_file (str): Path to login credentials JSON file
+    
+    Example:
+        >>> browser = BrowserManager(use_profile=True, headless=False)
+        >>> browser.setup_driver()
+        >>> browser.navigate_to("https://tokopedia.com")
+        >>> browser.auto_login("tokopedia")
+        >>> browser.close()
+    
+    Note:
+        Implements multiple anti-detection techniques and supports persistent
+        sessions across browser restarts through profile management.
+    """
     
     def __init__(self, use_profile: bool = True, profile_name: str = "research_profile", headless: bool = False) -> None:
+        """Initialize BrowserManager with configuration options.
+        
+        Sets up the browser manager with specified profile and display settings.
+        
+        Args:
+            use_profile (bool, optional): Enable persistent Chrome profile. Defaults to True.
+            profile_name (str, optional): Name of Chrome profile. Defaults to "research_profile".
+            headless (bool, optional): Run browser in headless mode. Defaults to False.
+        
+        Note:
+            Creates profile directory if it doesn't exist and sets up credentials file path.
+        """
         self.driver: Optional[webdriver.Chrome] = None
         self.wait: Optional[WebDriverWait] = None
         self.use_profile = use_profile
@@ -23,7 +59,17 @@ class BrowserManager:
         self.credentials_file = "config/login_credentials.json"
     
     def _get_profile_path(self) -> Path:
-        """Get the path for Chrome profile"""
+        """Get the path for Chrome profile directory.
+        
+        Creates and returns the path to the Chrome profile directory,
+        ensuring the directory exists.
+        
+        Returns:
+            Path: Path object pointing to the profile directory
+        
+        Note:
+            Creates chrome_profiles directory if it doesn't exist.
+        """
         profile_dir = Path("chrome_profiles")
         profile_dir.mkdir(exist_ok=True)
         return profile_dir / self.profile_name
@@ -64,7 +110,30 @@ class BrowserManager:
             return {}
 
     def setup_driver(self) -> Optional[webdriver.Chrome]:
-        """Setup Chrome driver with persistent profile and anti-detection options"""
+        """Setup Chrome driver with persistent profile and anti-detection options.
+        
+        Initializes Chrome WebDriver with comprehensive anti-detection measures,
+        performance optimizations, and persistent profile support.
+        
+        Returns:
+            Optional[webdriver.Chrome]: Configured Chrome WebDriver instance or None if failed
+        
+        Raises:
+            Exception: Various WebDriver initialization errors
+        
+        Example:
+            >>> browser = BrowserManager()
+            >>> driver = browser.setup_driver()
+            >>> if driver:
+            ...     print("Browser ready for scraping")
+        
+        Note:
+            Implements multiple anti-detection techniques including:
+            - User agent rotation
+            - WebDriver property masking
+            - Automation extension disabling
+            - Memory and performance optimizations
+        """
         options = webdriver.ChromeOptions()
         
         # Headless mode if requested
@@ -142,7 +211,25 @@ class BrowserManager:
             raise
     
     def navigate_to(self, url: str) -> bool:
-        """Navigate to a URL and wait for page load"""
+        """Navigate to a URL and wait for page load.
+        
+        Navigates the browser to the specified URL and waits for the page
+        to fully load before returning.
+        
+        Args:
+            url (str): Target URL to navigate to
+        
+        Returns:
+            bool: True if navigation successful, False otherwise
+        
+        Example:
+            >>> success = browser.navigate_to("https://tokopedia.com")
+            >>> if success:
+            ...     print("Page loaded successfully")
+        
+        Note:
+            Includes automatic page load waiting with timeout handling.
+        """
         if not self.driver:
             print("❌ Driver not initialized")
             return False
@@ -163,7 +250,30 @@ class BrowserManager:
             return False
     
     def auto_login(self, site_name: str) -> bool:
-        """Automatically login to specified site using saved credentials"""
+        """Automatically login to specified site using saved credentials.
+        
+        Performs automated login using credentials stored in the configuration file.
+        Supports tokopedia, shopee, and bukalapak with site-specific login flows.
+        
+        Args:
+            site_name (str): Name of the site to login to ('tokopedia', 'shopee', 'bukalapak')
+        
+        Returns:
+            bool: True if login successful, False otherwise
+        
+        Raises:
+            Exception: Various login-related errors including missing credentials
+        
+        Example:
+            >>> if browser.auto_login("tokopedia"):
+            ...     print("Successfully logged in to Tokopedia")
+            ... else:
+            ...     print("Login failed")
+        
+        Note:
+            Requires valid credentials in config/login_credentials.json.
+            Creates template file if it doesn't exist.
+        """
         if not self.driver or not self.wait:
             print("❌ Browser not properly initialized")
             return False
@@ -389,7 +499,19 @@ class BrowserManager:
         return True
     
     def close(self) -> None:
-        """Close the browser"""
+        """Close the browser and save profile data.
+        
+        Properly closes the Chrome browser instance and saves any profile
+        data for future sessions.
+        
+        Example:
+            >>> browser.close()
+            🔧 Closing browser and saving profile...
+        
+        Note:
+            Should always be called when finished with the browser to
+            prevent resource leaks and save session data.
+        """
         if self.driver:
             print("🔧 Closing browser and saving profile...")
             self.driver.quit()

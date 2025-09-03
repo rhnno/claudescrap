@@ -4,20 +4,22 @@ API integration tests for scraping endpoints.
 Tests the FastAPI endpoints that use ScraperService to ensure
 proper integration between the API layer and service layer.
 """
+from typing import Any
+
+
 import pytest
 import asyncio
 from unittest.mock import patch, Mock, AsyncMock
 from fastapi.testclient import TestClient
 import jwt
 from datetime import datetime
-
 from src.api.scraping_api import app, scraper_service
 from tests.conftest import TEST_SITE, TEST_QUERY, TEST_MAX_PAGES, TEST_JOB_ID
 
 
 # Test JWT token
 SECRET_KEY = "test-secret-123"
-TEST_TOKEN = jwt.encode({"sub": "test_user"}, SECRET_KEY, algorithm="HS256")
+TEST_TOKEN= jwt.encode({"sub": "test_user"}, SECRET_KEY, algorithm="HS256")
 
 
 @pytest.fixture
@@ -45,7 +47,7 @@ class TestScrapingAPIEndpoints:
     
     def test_start_scraping_success(self, client, auth_headers):
         """Test successful scraping job start."""
-        with patch.object(scraper_service, 'start_scraping_job', return_value=TEST_JOB_ID) as mock_start:
+        with patch.object(scraper_service, 'start_scraping_job', new_callable=AsyncMock, return_value=TEST_JOB_ID) as mock_start:
             response = client.post(
                 "/api/scraping/start",
                 json={
@@ -90,7 +92,7 @@ class TestScrapingAPIEndpoints:
     
     def test_start_scraping_service_error(self, client, auth_headers):
         """Test scraping start when service raises error."""
-        with patch.object(scraper_service, 'start_scraping_job', side_effect=Exception("Service error")):
+        with patch.object(scraper_service, 'start_scraping_job', new_callable=AsyncMock, side_effect=Exception("Service error")):
             response = client.post(
                 "/api/scraping/start",
                 json={
@@ -133,7 +135,7 @@ class TestScrapingAPIEndpoints:
     
     def test_stop_scraping_job_success(self, client, auth_headers):
         """Test successfully stopping a job."""
-        with patch.object(scraper_service, 'stop_scraping_job', return_value=True) as mock_stop:
+        with patch.object(scraper_service, 'stop_scraping_job', new_callable=AsyncMock, return_value=True) as mock_stop:
             response = client.post(f"/api/scraping/stop/{TEST_JOB_ID}", headers=auth_headers)
         
         assert response.status_code == 200
@@ -144,7 +146,7 @@ class TestScrapingAPIEndpoints:
     
     def test_stop_scraping_job_not_found(self, client, auth_headers):
         """Test stopping non-existent job."""
-        with patch.object(scraper_service, 'stop_scraping_job', return_value=False):
+        with patch.object(scraper_service, 'stop_scraping_job', new_callable=AsyncMock, return_value=False):
             response = client.post("/api/scraping/stop/nonexistent", headers=auth_headers)
         
         assert response.status_code == 404
@@ -152,7 +154,7 @@ class TestScrapingAPIEndpoints:
     
     def test_stop_scraping_job_service_error(self, client, auth_headers):
         """Test stopping job when service raises error."""
-        with patch.object(scraper_service, 'stop_scraping_job', side_effect=Exception("Stop error")):
+        with patch.object(scraper_service, 'stop_scraping_job', new_callable=AsyncMock, side_effect=Exception("Stop error")):
             response = client.post(f"/api/scraping/stop/{TEST_JOB_ID}", headers=auth_headers)
         
         assert response.status_code == 500
@@ -211,7 +213,7 @@ class TestScrapingAPIEndpoints:
     
     def test_default_max_pages(self, client, auth_headers):
         """Test default max_pages value."""
-        with patch.object(scraper_service, 'start_scraping_job', return_value=TEST_JOB_ID) as mock_start:
+        with patch.object(scraper_service, 'start_scraping_job', new_callable=AsyncMock, return_value=TEST_JOB_ID) as mock_start:
             response = client.post(
                 "/api/scraping/start",
                 json={
@@ -273,7 +275,7 @@ class TestAPIEdgeCases:
         """Test handling of very long query strings."""
         long_query = "a" * 1000  # Very long query
         
-        with patch.object(scraper_service, 'start_scraping_job', return_value=TEST_JOB_ID):
+        with patch.object(scraper_service, 'start_scraping_job', new_callable=AsyncMock, return_value=TEST_JOB_ID):
             response = client.post(
                 "/api/scraping/start",
                 json={
@@ -291,7 +293,7 @@ class TestAPIEdgeCases:
         """Test handling of special characters in query."""
         special_query = "laptop & gaming (RTX 4060) $1000+"
         
-        with patch.object(scraper_service, 'start_scraping_job', return_value=TEST_JOB_ID):
+        with patch.object(scraper_service, 'start_scraping_job', new_callable=AsyncMock, return_value=TEST_JOB_ID):
             response = client.post(
                 "/api/scraping/start",
                 json={
@@ -306,7 +308,7 @@ class TestAPIEdgeCases:
     
     def test_large_max_pages(self, client, auth_headers):
         """Test handling of very large max_pages values."""
-        with patch.object(scraper_service, 'start_scraping_job', return_value=TEST_JOB_ID):
+        with patch.object(scraper_service, 'start_scraping_job', new_callable=AsyncMock, return_value=TEST_JOB_ID):
             response = client.post(
                 "/api/scraping/start",
                 json={
@@ -328,7 +330,7 @@ class TestAPIEdgeCases:
         results = []
         
         def make_request():
-            with patch.object(scraper_service, 'start_scraping_job', return_value=TEST_JOB_ID):
+            with patch.object(scraper_service, 'start_scraping_job', new_callable=AsyncMock, return_value=TEST_JOB_ID):
                 response = client.post(
                     "/api/scraping/start",
                     json={

@@ -10,6 +10,7 @@ import time
 import json
 import csv
 from datetime import datetime
+from typing import Optional, Dict, List, Any
 import pandas as pd
 
 # Using proper package imports
@@ -18,16 +19,42 @@ from src.utils.utils import RandomUtils
 from selenium.webdriver.common.by import By
 
 class ScrapingOrchestrator:
-    """A rule-based orchestrator for scraping e-commerce sites."""
+    """A rule-based orchestrator for scraping e-commerce sites.
     
-    def __init__(self):
-        """Initialize the scraping orchestrator"""
-        self.browser = None
+    This class manages the entire scraping workflow including browser setup,
+    batch processing of multiple sites and queries, data extraction, and
+    result saving in multiple formats.
+    
+    Attributes:
+        browser (Optional[BrowserManager]): Browser instance for web scraping
+        utils (RandomUtils): Utility functions for random delays and operations
+        session_stats (Dict[str, Any]): Statistics tracking for the current session
+    
+    Example:
+        >>> orchestrator = ScrapingOrchestrator()
+        >>> orchestrator.setup_browser(headless=True)
+        >>> config = {"sites": [{"name": "tokopedia", "queries": ["laptop"]}]}
+        >>> results = orchestrator.run_batch_scraping(config)
+    """
+    
+    def __init__(self) -> None:
+        """Initialize the scraping orchestrator.
+        
+        Sets up initial state including browser placeholder, utility functions,
+        and session statistics tracking.
+        
+        Raises:
+            ImportError: If required dependencies are not available
+        
+        Note:
+            Browser is not initialized until setup_browser() is called
+        """
+        self.browser: Optional[BrowserManager] = None
         self.utils = RandomUtils()
         
-        # Scraping statistics
-        self.session_stats = {
-            'start_time': None,
+        # Scraping statistics with proper type annotations
+        self.session_stats: Dict[str, Any] = {
+            'start_time': None,  # Will be datetime when set
             'total_products': 0,
             'total_pages': 0,
             'sites_scraped': 0,
@@ -37,8 +64,31 @@ class ScrapingOrchestrator:
         
         print("🚀 Scraping Orchestrator initialized")
     
-    def setup_browser(self, headless=False, use_profile=True):
-        """Setup browser for production scraping"""
+    def setup_browser(self, headless: bool = False, use_profile: bool = True) -> bool:
+        """Setup browser for production scraping.
+        
+        Initializes a BrowserManager instance with specified configuration
+        for web scraping operations.
+        
+        Args:
+            headless (bool, optional): Run browser in headless mode. Defaults to False.
+            use_profile (bool, optional): Use persistent browser profile. Defaults to True.
+        
+        Returns:
+            bool: True if browser setup successful, False otherwise
+        
+        Raises:
+            Exception: Various browser-related exceptions during setup
+        
+        Example:
+            >>> orchestrator = ScrapingOrchestrator()
+            >>> success = orchestrator.setup_browser(headless=True, use_profile=False)
+            >>> if success:
+            ...     print("Browser ready for scraping")
+        
+        Note:
+            Uses 'research_profile' as the default profile name for consistency
+        """
         try:
             self.browser = BrowserManager(
                 headless=headless,
@@ -52,23 +102,42 @@ class ScrapingOrchestrator:
             print(f"❌ Browser setup failed: {e}")
             return False
     
-    def run_batch_scraping(self, scraping_config):
-        """
-        Run batch scraping based on configuration
+    def run_batch_scraping(self, scraping_config: Dict[str, Any]) -> Dict[str, Any]:
+        """Run batch scraping based on configuration.
         
-        scraping_config format:
-        {
-            "sites": [
-                {
-                    "name": "tokopedia",
-                    "queries": ["laptop", "smartphone"],
-                    "max_pages": 10,
-                    "scroll_depth": 3
-                }
-            ],
-            "output_format": ["csv", "excel", "json"],
-            "delay_range": [1, 3]
-        }
+        Processes multiple sites and queries according to the provided configuration,
+        collecting product data and saving results in specified formats.
+        
+        Args:
+            scraping_config (Dict[str, Any]): Configuration dictionary containing:
+                - sites (List[Dict]): List of site configurations with queries
+                - output_format (List[str]): Output formats like ['csv', 'excel', 'json']
+                - delay_range (List[int]): Min/max delay range in seconds
+        
+        Returns:
+            Dict[str, Any]: Nested dictionary with structure:
+                {site_name: {query: [product_list]}}
+        
+        Raises:
+            ValueError: If browser not initialized or invalid configuration
+            Exception: Various scraping-related errors
+        
+        Example:
+            >>> config = {
+            ...     "sites": [{
+            ...         "name": "tokopedia",
+            ...         "queries": ["laptop", "smartphone"],
+            ...         "max_pages": 10,
+            ...         "scroll_depth": 3
+            ...     }],
+            ...     "output_format": ["csv", "excel", "json"],
+            ...     "delay_range": [1, 3]
+            ... }
+            >>> results = orchestrator.run_batch_scraping(config)
+        
+        Note:
+            Updates session statistics during execution and saves results
+            automatically upon completion
         """
         print("🚀 Starting batch scraping...")
         self.session_stats['start_time'] = datetime.now()
@@ -121,8 +190,40 @@ class ScrapingOrchestrator:
         return all_results
     
 
-    def _scrape_query(self, site_name, query, max_pages, scroll_depth, delay_range):
-        """Scrape a single query for a given site."""
+    def _scrape_query(self, site_name: str, query: str, max_pages: int, 
+                     scroll_depth: int, delay_range: List[int]) -> List[Dict[str, Any]]:
+        """Scrape a single query for a given site.
+        
+        Performs the complete scraping workflow for a specific query on a target site,
+        including URL construction, navigation, pagination, and data extraction.
+        
+        Args:
+            site_name (str): Name of the target site ('tokopedia', 'shopee')
+            query (str): Search query string
+            max_pages (int): Maximum number of pages to scrape
+            scroll_depth (int): Number of scroll actions per page
+            delay_range (List[int]): [min, max] delay range in seconds
+        
+        Returns:
+            List[Dict[str, Any]]: List of extracted product dictionaries
+        
+        Raises:
+            ValueError: If browser not initialized or unknown site
+            Exception: Various scraping-related errors
+        
+        Example:
+            >>> products = orchestrator._scrape_query(
+            ...     site_name="tokopedia",
+            ...     query="laptop gaming",
+            ...     max_pages=5,
+            ...     scroll_depth=3,
+            ...     delay_range=[1, 3]
+            ... )
+        
+        Note:
+            Handles pagination automatically and respects rate limiting
+            through random delays
+        """
         
         # Build URL based on site
         if site_name == 'tokopedia':
@@ -135,6 +236,8 @@ class ScrapingOrchestrator:
             return []
         
         # Navigate to search page
+        if not self.browser:
+            raise ValueError("Browser not initialized. Call setup_browser() first.")
         self.browser.navigate_to(url)
         time.sleep(3)
         
@@ -180,18 +283,65 @@ class ScrapingOrchestrator:
         
         return all_products
     
-    def _perform_scroll(self, depth_scroll):
-        """Perform scrolling to load content"""
+    def _perform_scroll(self, depth_scroll: int) -> None:
+        """Perform scrolling to load content.
+        
+        Executes JavaScript scrolling actions to trigger lazy loading
+        of dynamic content on the page.
+        
+        Args:
+            depth_scroll (int): Number of scroll actions to perform
+        
+        Raises:
+            ValueError: If browser or driver not available
+            Exception: JavaScript execution or scrolling errors
+        
+        Example:
+            >>> orchestrator._perform_scroll(3)
+        
+        Note:
+            Includes random delays between scrolls to mimic human behavior
+            and avoid triggering anti-bot detection
+        """
         try:
+            if not self.browser or not self.browser.driver:
+                raise ValueError("Browser or driver not available")
             for i in range(depth_scroll):
                 self.browser.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(self.utils.random_delay(0.5, 1.5))
         except Exception as e:
             print(f"⚠️ Scrolling error: {e}")
     
-    def _extract_products_from_page(self):
-        """Extract products from current page"""
+    def _extract_products_from_page(self) -> List[Dict[str, Any]]:
+        """Extract products from current page.
+        
+        Parses the current page DOM to extract product information including
+        names, prices, and URLs using multiple CSS selector fallbacks.
+        
+        Returns:
+            List[Dict[str, Any]]: List of product dictionaries with keys:
+                - name (str): Product name
+                - price (str): Product price
+                - url (str): Product URL
+        
+        Raises:
+            ValueError: If browser or driver not available
+            Exception: DOM parsing or element extraction errors
+        
+        Example:
+            >>> products = orchestrator._extract_products_from_page()
+            >>> for product in products:
+            ...     print(f"{product['name']}: {product['price']}")
+        
+        Note:
+            Uses multiple CSS selector fallbacks for robustness against
+            site layout changes. Limits extraction to 60 products per page
+            for performance.
+        """
         try:
+            if not self.browser or not self.browser.driver:
+                raise ValueError("Browser or driver not available")
+                
             from selenium.webdriver.common.by import By
             from selenium.common.exceptions import NoSuchElementException
             
@@ -255,14 +405,15 @@ class ScrapingOrchestrator:
                     try:
                         # Try to find the main product link
                         link_elem = element.find_element(By.CSS_SELECTOR, 'a[href*="/p/"]')
-                        product['url'] = link_elem.get_attribute('href')
+                        href = link_elem.get_attribute('href')
+                        product['url'] = str(href) if href else "URL not found"
                     except:
                         try:
                             # Fallback to any link
                             link_elem = element.find_element(By.CSS_SELECTOR, 'a')
                             href = link_elem.get_attribute('href')
-                            if href and 'tokopedia.com' in href:
-                                product['url'] = href
+                            if href and 'tokopedia.com' in str(href):
+                                product['url'] = str(href)
                             else:
                                 product['url'] = "URL not found"
                         except:
@@ -284,11 +435,36 @@ class ScrapingOrchestrator:
             return []
     
     
-    def _handle_pagination(self):
-        """Handle pagination navigation using URL-based approach only (safer from bot detection)"""
+    def _handle_pagination(self) -> bool:
+        """Handle pagination navigation using URL-based approach.
+        
+        Safely navigates to the next page using URL manipulation instead of
+        clicking elements to avoid bot detection honeypots.
+        
+        Returns:
+            bool: True if pagination successful, False if no more pages
+        
+        Raises:
+            ValueError: If browser or driver not available
+            Exception: Navigation or URL manipulation errors
+        
+        Example:
+            >>> if orchestrator._handle_pagination():
+            ...     print("Moved to next page")
+            ... else:
+            ...     print("No more pages available")
+        
+        Note:
+            Uses URL parameter manipulation to avoid clicking pagination
+            elements which may be honeypots for bot detection. Includes
+            verification that navigation actually occurred.
+        """
         
         # URL-based pagination only - no clicking to avoid honeypots
         try:
+            if not self.browser or not self.browser.driver:
+                raise ValueError("Browser or driver not available")
+                
             current_url = self.browser.driver.current_url
             print(f"🔍 Current URL: {current_url}")
             
@@ -317,8 +493,30 @@ class ScrapingOrchestrator:
             print(f"⚠️ URL pagination failed: {e}")
             return False
     
-    def _save_batch_results(self, results, config):
-        """Save batch results in multiple formats with organized directory structure"""
+    def _save_batch_results(self, results: Dict[str, Any], config: Dict[str, Any]) -> None:
+        """Save batch results in multiple formats with organized directory structure.
+        
+        Processes and saves scraping results in various formats (CSV, Excel, JSON)
+        with organized directory structure and meaningful filenames.
+        
+        Args:
+            results (Dict[str, Any]): Nested results dictionary {site: {query: [products]}}
+            config (Dict[str, Any]): Configuration containing output format preferences
+        
+        Raises:
+            OSError: Directory creation or file writing errors
+            Exception: Data processing or format conversion errors
+        
+        Example:
+            >>> results = {"tokopedia": {"laptop": [{"name": "Gaming Laptop"}]}}
+            >>> config = {"output_format": ["csv", "excel"]}
+            >>> orchestrator._save_batch_results(results, config)
+        
+        Note:
+            Creates timestamped filenames and organized directory structure.
+            Flattens nested results and adds metadata (query, site) to each product.
+            Creates separate Excel sheets for each site.
+        """
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_formats = config.get('output_format', ['csv', 'excel'])
         
@@ -397,10 +595,31 @@ class ScrapingOrchestrator:
             except Exception as e:
                 print(f"❌ JSON save failed: {e}")
     
-    def _print_session_summary(self):
-        """Print session summary statistics"""
+    def _print_session_summary(self) -> None:
+        """Print session summary statistics.
+        
+        Displays comprehensive statistics about the completed scraping session
+        including duration, counts, and performance metrics.
+        
+        Example:
+            >>> orchestrator._print_session_summary()
+            📊 SCRAPING SESSION SUMMARY
+            ============================================================
+            Duration: 0:15:30
+            Sites scraped: 2
+            Total products: 150
+            ...
+        
+        Note:
+            Calculates session duration from stored start time and computes
+            average products per page for performance insights.
+        """
         end_time = datetime.now()
-        duration = end_time - self.session_stats['start_time']
+        start_time = self.session_stats['start_time']
+        if start_time is not None:
+            duration = end_time - start_time
+        else:
+            duration = "Unknown (start time not recorded)"
         
         print(f"\n📊 SCRAPING SESSION SUMMARY")
         print("=" * 60)
@@ -411,22 +630,52 @@ class ScrapingOrchestrator:
         print(f"Total products: {self.session_stats['total_products']}")
         print(f"Errors: {self.session_stats['errors']}")
         
-        if self.session_stats['total_pages'] > 0:
-            avg_products_per_page = self.session_stats['total_products'] / self.session_stats['total_pages']
+        total_pages = self.session_stats['total_pages']
+        total_products = self.session_stats['total_products']
+        if total_pages and total_pages > 0:
+            avg_products_per_page = total_products / total_pages
             print(f"Average products per page: {avg_products_per_page:.1f}")
     
-    def close(self):
-        """Clean up resources"""
+    def close(self) -> None:
+        """Clean up resources.
+        
+        Properly closes the browser instance and releases associated resources
+        to prevent memory leaks and zombie processes.
+        
+        Example:
+            >>> orchestrator.close()
+            ✅ Browser closed
+        
+        Note:
+            Should always be called when scraping is complete or in exception
+            handlers to ensure proper cleanup.
+        """
         if self.browser:
             self.browser.close()
             self.browser = None
             print("✅ Browser closed")
 
     def _get_next_page_url(self, current_url: str) -> str:
-        """
-        Intelligently increments the page number in a URL.
-        Handles 'page=X', 'p=X', and the non-standard '{page=X}'.
-        If no page parameter is found, it adds '&page=2'.
+        """Intelligently increment the page number in a URL.
+        
+        Handles various pagination URL patterns including 'page=X', 'p=X',
+        and non-standard '{page=X}' formats. Adds pagination if none exists.
+        
+        Args:
+            current_url (str): Current page URL
+        
+        Returns:
+            str: URL for the next page
+        
+        Example:
+            >>> url = "https://site.com/search?q=laptop&page=1"
+            >>> next_url = orchestrator._get_next_page_url(url)
+            >>> print(next_url)
+            https://site.com/search?q=laptop&page=2
+        
+        Note:
+            If no page parameter exists, assumes page 1 and adds page=2.
+            Handles multiple URL parameter patterns for different sites.
         """
         import re
         
@@ -460,8 +709,30 @@ class ScrapingOrchestrator:
             return f"{current_url}?page=2"
 
 
-def load_scraping_config():
-    """Load or create scraping configuration"""
+def load_scraping_config() -> Dict[str, Any]:
+    """Load or create scraping configuration.
+    
+    Attempts to load configuration from a JSON file, creating a default
+    configuration if the file doesn't exist or is invalid.
+    
+    Returns:
+        Dict[str, Any]: Configuration dictionary containing sites, queries,
+            output formats, and scraping parameters
+    
+    Raises:
+        OSError: File system errors during config file operations
+        json.JSONDecodeError: Invalid JSON in existing config file
+    
+    Example:
+        >>> config = load_scraping_config()
+        >>> print(config['sites'][0]['name'])
+        tokopedia
+    
+    Note:
+        Creates 'config/scraping_config.json' with default settings if
+        the file doesn't exist. Default includes tokopedia with common
+        product queries.
+    """
     config_file = "config/scraping_config.json"
     
     default_config = {
@@ -497,8 +768,29 @@ def load_scraping_config():
     return default_config
 
 
-def main():
-    """Main scraping orchestrator function"""
+def main() -> None:
+    """Main scraping orchestrator function.
+    
+    Interactive command-line interface for configuring and running
+    batch scraping operations. Handles user input, browser setup,
+    and execution coordination.
+    
+    Raises:
+        KeyboardInterrupt: User interruption during scraping
+        Exception: Various scraping-related errors
+    
+    Example:
+        >>> main()
+        🕷️ Simple Scraping Orchestrator
+        ============================================================
+        📋 Current Configuration:
+        Sites: ['tokopedia']
+        ...
+    
+    Note:
+        Provides interactive prompts for configuration confirmation
+        and execution options. Ensures proper cleanup even on errors.
+    """
     print("🕷️ Simple Scraping Orchestrator")
     print("=" * 60)
     
