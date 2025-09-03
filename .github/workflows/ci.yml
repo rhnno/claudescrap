@@ -74,11 +74,33 @@ jobs:
     
     - name: Install ChromeDriver
       run: |
-        CHROME_VERSION=$(google-chrome --version | cut -d " " -f3 | cut -d "." -f1)
-        CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}")
-        wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
-        sudo unzip /tmp/chromedriver.zip chromedriver -d /usr/local/bin/
+        # Get Chrome version
+        CHROME_VERSION=$(google-chrome --version | cut -d " " -f3)
+        echo "Chrome version: $CHROME_VERSION"
+        
+        # Use Chrome for Testing API to get compatible ChromeDriver
+        CHROMEDRIVER_URL=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json" | \
+          python3 -c "import sys, json; data=json.load(sys.stdin); versions=[v for v in data['versions'] if v['version'].startswith('$CHROME_VERSION'.split('.')[0])]; print(versions[-1]['downloads']['chromedriver'][0]['url'] if versions and 'chromedriver' in versions[-1]['downloads'] else '')" 2>/dev/null)
+        
+        # Fallback to latest stable if specific version not found
+        if [ -z "$CHROMEDRIVER_URL" ]; then
+          echo "Using latest stable ChromeDriver"
+          CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/131.0.6778.204/linux64/chromedriver-linux64.zip"
+        fi
+        
+        echo "Downloading ChromeDriver from: $CHROMEDRIVER_URL"
+        wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL"
+        sudo unzip /tmp/chromedriver.zip -d /tmp/
+        sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/ || sudo mv /tmp/chromedriver /usr/local/bin/
         sudo chmod +x /usr/local/bin/chromedriver
+        chromedriver --version
+    
+    - name: Verify Chrome and ChromeDriver installation
+      run: |
+        google-chrome --version
+        chromedriver --version
+        which chromedriver
+        echo "Chrome and ChromeDriver installation verified"
     
     - name: Lint with flake8
       run: |
@@ -242,19 +264,59 @@ jobs:
 
   notify:
     runs-on: ubuntu-latest
-    needs: [test, security-scan]
+    needs: [test, security-scan, test-matrix, docker-test]
     if: always()
     
     steps:
-    - name: Notify on success
-      if: needs.test.result == 'success'
+    - name: Determine overall status
+      id: status
       run: |
-        echo "✅ All tests passed!"
-        # Add notification logic here (Slack, email, etc.)
+        # Check results of all jobs
+        TEST_RESULT="${{ needs.test.result }}"
+        SECURITY_RESULT="${{ needs.security-scan.result }}"
+        MATRIX_RESULT="${{ needs.test-matrix.result }}"
+        DOCKER_RESULT="${{ needs.docker-test.result }}"
+        
+        echo "Test job: $TEST_RESULT"
+        echo "Security scan: $SECURITY_RESULT"
+        echo "Matrix test: $MATRIX_RESULT"
+        echo "Docker test: $DOCKER_RESULT"
+        
+        # Determine overall status
+        if [[ "$TEST_RESULT" == "success" && "$SECURITY_RESULT" == "success" ]]; then
+          echo "overall_status=success" >> $GITHUB_OUTPUT
+          echo "✅ Core CI pipeline passed"
+        else
+          echo "overall_status=failure" >> $GITHUB_OUTPUT
+          echo "❌ Core CI pipeline failed"
+        fi
+    
+    - name: Notify on success
+      if: steps.status.outputs.overall_status == 'success'
+      run: |
+        echo "🎉 ScraperService CI/CD Pipeline - SUCCESS"
+        echo "✅ All core tests passed!"
+        echo "✅ Security scans completed successfully!"
+        echo "📊 Coverage reports generated"
+        echo "🚀 Ready for deployment"
+        # TODO: Add Slack/Discord webhook notification here
+        # curl -X POST -H 'Content-type: application/json' \
+        #   --data '{"text":"✅ ScraperService CI/CD SUCCESS"}' \
+        #   $SLACK_WEBHOOK_URL
     
     - name: Notify on failure
-      if: needs.test.result == 'failure'
+      if: steps.status.outputs.overall_status == 'failure'
       run: |
-        echo "❌ Tests failed!"
-        # Add notification logic here (Slack, email, etc.)
+        echo "💥 ScraperService CI/CD Pipeline - FAILURE"
+        echo "❌ One or more critical jobs failed!"
+        echo "🔍 Check the logs for details:"
+        echo "   - Test results: ${{ needs.test.result }}"
+        echo "   - Security scan: ${{ needs.security-scan.result }}"
+        echo "   - Matrix tests: ${{ needs.test-matrix.result }}"
+        echo "   - Docker tests: ${{ needs.docker-test.result }}"
+        echo "🛠️  Review and fix issues before retrying"
+        # TODO: Add Slack/Discord webhook notification here
+        # curl -X POST -H 'Content-type: application/json' \
+        #   --data '{"text":"❌ ScraperService CI/CD FAILED - Check GitHub Actions"}' \
+        #   $SLACK_WEBHOOK_URL
         exit 1
