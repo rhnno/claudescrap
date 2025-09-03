@@ -144,7 +144,12 @@ if __name__ == "__main__":
     response = input("🚀 Open Chrome with Selenium using research profile? (y/n): ").lower().strip()
     
     if response in ['y', 'yes', '']:
-        success = open_chrome_selenium()
+        browser = open_chrome_with_browser_manager()
+        if browser:
+            success = setup_development_sites(browser)
+            browser.close()
+        else:
+            success = False
         
         if success:
             print("\n🎉 Success! Your research profile is ready.")
