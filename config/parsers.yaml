@@ -1,16 +1,8 @@
 parsing:
   tokopedia:
     product_card: "div.css-5wh65g"
-    title: "div.css-1f4mp12"
-    price: "div.css-rhd610"
-    shop: "span.css-vbihp9"
-    rating: "span.css-t70v7i"
-    review_count: "span.css-153qjw7"
-
-  amazon:
-    product_card: "div.s-result-item[data-asin]"
-    title: "h2 span.a-text-normal"
-    price: "span.a-price > span.a-offscreen"
-    shop: "span.a-size-base-plus"
-    rating: "span.a-icon-alt"
-    review_count: "span.a-size-base"
+    title: "span.+tnoqZhn89+NHUA43BpiJg=="
+    price: "div.urMOIDHH7I0Iy1Dv2oFaNw=="
+    shop: "span.si3CNdiG8AR0EaXvf6bFbQ=="
+    rating: "span._2NfJxPu4JC-55aCJ8bEsyw=="
+    review_count: "a[href*="/p/"]"
