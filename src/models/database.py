@@ -1,10 +1,12 @@
 """Database models and connection management"""
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Float, Boolean
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker, DeclarativeBase
 from datetime import datetime
 import os
+from typing import Optional, List, Dict, Any
 
-Base = declarative_base()
+# Create base class with proper typing
+Base: DeclarativeBase = declarative_base()
 
 class ScrapingJob(Base):
     __tablename__ = 'scraping_jobs'
@@ -35,7 +37,7 @@ class Product(Base):
     scraped_at = Column(DateTime, default=datetime.utcnow)
 
 class DatabaseManager:
-    def __init__(self, database_url=None):
+    def __init__(self, database_url: Optional[str] = None) -> None:
         if not database_url:
             database_url = os.getenv('DATABASE_URL', 'sqlite:///scraping.db')
         
@@ -46,7 +48,7 @@ class DatabaseManager:
     def get_session(self):
         return self.SessionLocal()
     
-    def create_job(self, job_id, site, query):
+    def create_job(self, job_id: str, site: str, query: str) -> ScrapingJob:
         session = self.get_session()
         try:
             job = ScrapingJob(job_id=job_id, site=site, query=query)
@@ -56,7 +58,7 @@ class DatabaseManager:
         finally:
             session.close()
     
-    def update_job_status(self, job_id, status, **kwargs):
+    def update_job_status(self, job_id: str, status: str, **kwargs: Any) -> None:
         session = self.get_session()
         try:
             job = session.query(ScrapingJob).filter(ScrapingJob.job_id == job_id).first()
@@ -68,7 +70,7 @@ class DatabaseManager:
         finally:
             session.close()
     
-    def save_products(self, products, job_id):
+    def save_products(self, products: List[Dict[str, Any]], job_id: str) -> None:
         session = self.get_session()
         try:
             for product_data in products:

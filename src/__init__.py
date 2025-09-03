@@ -19,7 +19,7 @@ from .utils.utils import RandomUtils
 try:
     from .utils.parser import ProductParser
 except ImportError:
-    ProductParser = None
+    ProductParser = None  # type: ignore
 
 # Package metadata
 __version__ = "2.0.0"

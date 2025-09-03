@@ -13,7 +13,7 @@ from typing import Optional, Dict, Any
 class BrowserManager:
     """Handles all browser-related operations with persistent profile support"""
     
-    def __init__(self, use_profile=True, profile_name="research_profile", headless=False):
+    def __init__(self, use_profile: bool = True, profile_name: str = "research_profile", headless: bool = False) -> None:
         self.driver: Optional[webdriver.Chrome] = None
         self.wait: Optional[WebDriverWait] = None
         self.use_profile = use_profile
@@ -22,13 +22,13 @@ class BrowserManager:
         self.profile_path = self._get_profile_path()
         self.credentials_file = "config/login_credentials.json"
     
-    def _get_profile_path(self):
+    def _get_profile_path(self) -> Path:
         """Get the path for Chrome profile"""
         profile_dir = Path("chrome_profiles")
         profile_dir.mkdir(exist_ok=True)
         return profile_dir / self.profile_name
     
-    def _load_credentials(self):
+    def _load_credentials(self) -> Dict[str, Any]:
         """Load login credentials from config file"""
         try:
             if os.path.exists(self.credentials_file):
@@ -63,7 +63,7 @@ class BrowserManager:
             print(f"⚠️ Error loading credentials: {e}")
             return {}
 
-    def setup_driver(self):
+    def setup_driver(self) -> Optional[webdriver.Chrome]:
         """Setup Chrome driver with persistent profile and anti-detection options"""
         options = webdriver.ChromeOptions()
         
