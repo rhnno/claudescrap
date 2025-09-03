@@ -200,7 +200,7 @@ class ProductParser:
             try:
                 element = card.find(self.selectors[selector_key].split('.')[0], 
                                   class_='.'.join(self.selectors[selector_key].split('.')[1:]))
-                if element and hasattr(element, 'get'):
+                if element and isinstance(element, Tag):
                     if attr == 'href':
                         href_value = element.get('href')
                         return str(href_value) if href_value else 'N/A'
