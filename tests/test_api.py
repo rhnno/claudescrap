@@ -4,6 +4,8 @@ API integration tests for scraping endpoints.
 Tests the FastAPI endpoints that use ScraperService to ensure
 proper integration between the API layer and service layer.
 """
+
+
 from typing import Any
 
 
@@ -23,7 +25,7 @@ TEST_TOKEN= jwt.encode({"sub": "test_user"}, SECRET_KEY, algorithm="HS256")
 
 
 @pytest.fixture
-def client():
+def client() -> TestClient:
     """Test client for FastAPI app."""
     return TestClient(app)
 
