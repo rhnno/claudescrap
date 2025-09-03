@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 import asyncio
 from unittest.mock import patch, Mock, AsyncMock
-from starlette.testclient import TestClient
+from fastapi.testclient import TestClient
 import jwt
 from datetime import datetime
 from src.api.scraping_api import app, scraper_service
