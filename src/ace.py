@@ -13,9 +13,8 @@ from datetime import datetime
 import pandas as pd
 
 # Using proper package imports
-
-from utils.browser import BrowserManager
-from utils.utils import RandomUtils
+from src.utils.browser import BrowserManager
+from src.utils.utils import RandomUtils
 from selenium.webdriver.common.by import By
 
 class ScrapingOrchestrator:
