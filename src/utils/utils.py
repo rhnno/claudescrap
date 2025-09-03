@@ -5,7 +5,7 @@ class RandomUtils:
     """Utility functions for random delays and human-like behavior"""
     
     @staticmethod
-    def random_delay(min_delay=0.5, max_delay=3):
+    def random_delay(min_delay=0.5, max_delay=3.0) -> float:
         """Generate random delay duration with reduced timing"""
         return random.uniform(min_delay, max_delay)
     

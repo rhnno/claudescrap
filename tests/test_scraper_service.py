@@ -15,7 +15,7 @@ import pytest
 import asyncio
 import uuid
 from unittest.mock import Mock, AsyncMock, MagicMock, patch, call
-from datetime import datetime
+from datetime import datetime, timezone
 import concurrent.futures
 
 from src.services.scraper_service import ScraperService
@@ -241,7 +241,7 @@ class TestJobManagement:
             'site': TEST_SITE,
             'query': TEST_QUERY,
             'max_pages': TEST_MAX_PAGES,
-            'start_time': datetime.utcnow()
+            'start_time': datetime.now(timezone.utc)
         }
         
         result = await service.stop_scraping_job(TEST_JOB_ID)
@@ -320,16 +320,14 @@ class TestSessionStatistics:
         service = scraper_service_with_mocks
         service.session_stats = TEST_SESSION_STATS.copy()
         
-        with patch('logging.getLogger') as mock_get_logger:
-            mock_logger = Mock()
-            mock_get_logger.return_value = mock_logger
+        with patch('src.services.scraper_service.logger') as mock_logger:
             service.print_session_summary()
             
             # Verify logging calls
             assert mock_logger.info.call_count >= 7  # At least summary header + 6 stats
             
             # Check key information is logged
-            calls = [call.args[0] for call in mock_logger.info.call_calls]
+            calls = [call.args[0] for call in mock_logger.info.call_args_list]
             summary_text = ' '.join(calls)
             assert 'Total jobs: 10' in summary_text
             assert 'Success rate: 80.0%' in summary_text
@@ -345,12 +343,10 @@ class TestSessionStatistics:
             'total_pages': 10
         }
         
-        with patch('logging.getLogger') as mock_get_logger:
-            mock_logger = Mock()
-            mock_get_logger.return_value = mock_logger
+        with patch('src.services.scraper_service.logger') as mock_logger:
             service.print_session_summary()
             
-            calls = [call.args[0] for call in mock_logger.info.call_calls]
+            calls = [call.args[0] for call in mock_logger.info.call_args_list]
             summary_text = ' '.join(calls)
             assert 'Average products per page: 10.0' in summary_text
 
@@ -362,8 +358,8 @@ class TestExecuteScrapingIntegration:
     async def test_execute_scraping_success(self, scraper_service_with_mocks, mock_scraping_orchestrator, sample_products):
         """Test successful scraping execution."""
         service = scraper_service_with_mocks
-        # Ensure _scrape_query is an AsyncMock that returns sample_products
-        mock_scraping_orchestrator._scrape_query = AsyncMock(return_value=sample_products)
+        # Ensure _scrape_query is a regular Mock that returns sample_products
+        mock_scraping_orchestrator._scrape_query = Mock(return_value=sample_products)
         
         with patch.object(service, '_get_browser_from_pool', return_value=mock_scraping_orchestrator):
             with patch.object(service, '_return_browser_to_pool'):
@@ -402,9 +398,8 @@ class TestExecuteScrapingIntegration:
         """Test scraping execution when job is cancelled."""
         service = scraper_service_with_mocks
         
-        # Create a proper async mock that raises CancelledError
-        from unittest.mock import AsyncMock
-        mock_scraping_orchestrator._scrape_query = AsyncMock(side_effect=asyncio.CancelledError())
+        # Create a proper mock that raises CancelledError
+        mock_scraping_orchestrator._scrape_query = Mock(side_effect=asyncio.CancelledError())
         
         with patch.object(service, '_get_browser_from_pool', return_value=mock_scraping_orchestrator):
             with patch.object(service, '_return_browser_to_pool'):
@@ -423,7 +418,7 @@ class TestExecuteScrapingIntegration:
         """Test scraping execution when no products are found."""
         service = scraper_service_with_mocks
         # Set _scrape_query to return empty list instead of None
-        mock_scraping_orchestrator._scrape_query = AsyncMock(return_value=[])
+        mock_scraping_orchestrator._scrape_query = Mock(return_value=[])
         
         with patch.object(service, '_get_browser_from_pool', return_value=mock_scraping_orchestrator):
             with patch.object(service, '_return_browser_to_pool'):

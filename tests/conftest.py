@@ -8,7 +8,7 @@ import pytest
 import asyncio
 import uuid
 from unittest.mock import Mock, AsyncMock, MagicMock, patch
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Any
 import tempfile
 import os
@@ -59,8 +59,8 @@ def mock_scraping_orchestrator():
     """Mock ScrapingOrchestrator for testing."""
     mock_orchestrator = Mock(spec=ScrapingOrchestrator)
     mock_orchestrator.setup_browser = AsyncMock(return_value=True)
-    mock_orchestrator.close = AsyncMock()
-    mock_orchestrator._scrape_query = AsyncMock(return_value=[
+    mock_orchestrator.close = Mock()  # Changed from AsyncMock to Mock
+    mock_orchestrator._scrape_query = Mock(return_value=[  # Changed from AsyncMock to Mock
         {
             'name': 'Test Product 1',
             'price': '$100',
@@ -87,7 +87,7 @@ def mock_scraping_job():
     job.current_page = 0
     job.total_pages = 5
     job.products_found = 0
-    job.created_at = datetime.utcnow()
+    job.created_at = datetime.now(timezone.utc)
     job.completed_at = None
     job.error_message = None
     return job

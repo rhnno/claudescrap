@@ -23,7 +23,7 @@ Note:
 import asyncio
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from src.models.database import DatabaseManager, ScrapingJob
 from src.ace import ScrapingOrchestrator
 from src.utils.utils import RandomUtils as Utils
@@ -294,7 +294,7 @@ class ScraperService:
             'site': site,
             'query': query,
             'max_pages': max_pages,
-            'start_time': datetime.utcnow()
+            'start_time': datetime.now(timezone.utc)
         }
         
         return job_id
@@ -399,7 +399,7 @@ class ScraperService:
             self.db.update_job_status(
                 job_id, 
                 'completed', 
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(timezone.utc),
                 total_pages=page,
                 products_found=len(all_products)
             )
@@ -414,7 +414,7 @@ class ScraperService:
             self.db.update_job_status(
                 job_id, 
                 'cancelled', 
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(timezone.utc),
                 error_message="Job was cancelled by user"
             )
             self.session_stats['failed_jobs'] += 1
@@ -424,7 +424,7 @@ class ScraperService:
                 job_id, 
                 'failed', 
                 error_message=str(e),
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(timezone.utc),
                 total_pages=page
             )
             self.session_stats['failed_jobs'] += 1
@@ -550,7 +550,7 @@ class ScraperService:
             self.db.update_job_status(
                 job_id, 
                 'stopped', 
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(timezone.utc),
                 error_message="Job stopped by user"
             )
             
