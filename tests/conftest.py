@@ -58,9 +58,9 @@ def mock_database_manager():
 def mock_scraping_orchestrator():
     """Mock ScrapingOrchestrator for testing."""
     mock_orchestrator = Mock(spec=ScrapingOrchestrator)
-    mock_orchestrator.setup_browser = Mock(return_value=True)
-    mock_orchestrator.close = Mock()
-    mock_orchestrator._scrape_query = Mock(return_value=[
+    mock_orchestrator.setup_browser = AsyncMock(return_value=True)
+    mock_orchestrator.close = AsyncMock()
+    mock_orchestrator._scrape_query = AsyncMock(return_value=[
         {
             'name': 'Test Product 1',
             'price': '$100',

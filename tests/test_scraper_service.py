@@ -180,9 +180,11 @@ class TestJobManagement:
         service.db.create_job.return_value = mock_scraping_job
         
         with patch('asyncio.create_task') as mock_create_task:
-            with patch('uuid.uuid4', return_value=Mock()):
-                with patch('str', return_value=TEST_JOB_ID):
-                    job_id = await service.start_scraping_job(TEST_SITE, TEST_QUERY, TEST_MAX_PAGES)
+            with patch('uuid.uuid4') as mock_uuid:
+                mock_uuid.return_value = Mock()
+                mock_uuid.return_value.__str__ = Mock(return_value=TEST_JOB_ID)
+                
+                job_id = await service.start_scraping_job(TEST_SITE, TEST_QUERY, TEST_MAX_PAGES)
         
         # Verify job creation
         service.db.create_job.assert_called_once_with(TEST_JOB_ID, TEST_SITE, TEST_QUERY)
@@ -395,10 +397,9 @@ class TestExecuteScrapingIntegration:
         """Test scraping execution when job is cancelled."""
         service = scraper_service_with_mocks
         
-        async def mock_scrape_query(*args, **kwargs):
-            raise asyncio.CancelledError()
-        
-        mock_scraping_orchestrator._scrape_query.side_effect = mock_scrape_query
+        # Create a proper async mock that raises CancelledError
+        from unittest.mock import AsyncMock
+        mock_scraping_orchestrator._scrape_query = AsyncMock(side_effect=asyncio.CancelledError())
         
         with patch.object(service, '_get_browser_from_pool', return_value=mock_scraping_orchestrator):
             with patch.object(service, '_return_browser_to_pool'):
@@ -470,14 +471,21 @@ class TestAsyncLocking:
         service = scraper_service_with_mocks
         service._browser_pool = [mock_scraping_orchestrator]
         
-        # Simulate concurrent access
-        async def get_browser():
-            return await service._get_browser_from_pool()
+        # Create a second mock for the new browser creation
+        mock_orchestrator_2 = Mock()
         
-        # Both calls should complete without deadlock
-        results = await asyncio.gather(get_browser(), get_browser())
-        
-        # One should get the existing browser, one should create new
-        assert len(results) == 2
-        assert results[0] is not None
-        assert results[1] is not None
+        with patch.object(service, '_create_browser_async', return_value=mock_orchestrator_2):
+            # Simulate concurrent access
+            async def get_browser():
+                return await service._get_browser_from_pool()
+            
+            # Both calls should complete without deadlock
+            results = await asyncio.gather(get_browser(), get_browser())
+            
+            # One should get the existing browser, one should create new
+            assert len(results) == 2
+            assert results[0] is not None
+            assert results[1] is not None
+            # One should be the pooled browser, one should be the newly created one
+            assert mock_scraping_orchestrator in results
+            assert mock_orchestrator_2 in results
