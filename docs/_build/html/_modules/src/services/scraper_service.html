@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.services.scraper_service &mdash; ClaudeScrap 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ClaudeScrap
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ClaudeScrap</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">src.services.scraper_service</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for src.services.scraper_service</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Scraper Service Module</span>
+
+<span class="sd">This module provides the ScraperService class that implements an enhanced web scraping service</span>
+<span class="sd">using the ace.py architecture. It provides async job management with robust error handling,</span>
+<span class="sd">resource cleanup, and browser pooling for optimal performance.</span>
+
+<span class="sd">The service integrates with ScrapingOrchestrator for proven scraping capabilities and includes</span>
+<span class="sd">comprehensive job tracking, session statistics, and database persistence.</span>
+
+<span class="sd">Example:</span>
+<span class="sd">    Basic usage of the scraper service::</span>
+
+<span class="sd">        service = ScraperService()</span>
+<span class="sd">        job_id = await service.start_scraping_job(&#39;tokopedia&#39;, &#39;laptop&#39;, max_pages=5)</span>
+<span class="sd">        status = service.get_job_status(job_id)</span>
+<span class="sd">        await service.stop_scraping_job(job_id)</span>
+
+<span class="sd">Note:</span>
+<span class="sd">    This service requires a configured database connection and browser setup.</span>
+<span class="sd">    Browser pooling is enabled by default for performance optimization.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.models.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseManager</span><span class="p">,</span> <span class="n">ScrapingJob</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.ace</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScrapingOrchestrator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.utils.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">RandomUtils</span> <span class="k">as</span> <span class="n">Utils</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="c1"># Configure logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ScraperService">
+<a class="viewcode-back" href="../../../modules.html#src.services.scraper_service.ScraperService">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ScraperService</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Enhanced scraper service using ace.py architecture.</span>
+<span class="sd">    </span>
+<span class="sd">    This class provides comprehensive async job management with robust error handling,</span>
+<span class="sd">    resource cleanup, and browser pooling for optimal performance. It integrates with</span>
+<span class="sd">    the ScrapingOrchestrator from ace.py for proven scraping capabilities.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        db (DatabaseManager): Database manager instance for job persistence</span>
+<span class="sd">        utils (RandomUtils): Utility functions for random delays and human-like behavior</span>
+<span class="sd">        running_jobs (dict): Dictionary tracking currently running scraping jobs</span>
+<span class="sd">        session_stats (dict): Session statistics including job counts and success rates</span>
+<span class="sd">        </span>
+<span class="sd">    Browser Pool Attributes:</span>
+<span class="sd">        _browser_pool (list): List of available browser instances for reuse</span>
+<span class="sd">        _browser_pool_size (int): Maximum number of browsers to maintain in pool (default: 2)</span>
+<span class="sd">        _browser_lock (asyncio.Lock): Async lock for thread-safe browser pool operations</span>
+<span class="sd">        </span>
+<span class="sd">    Example:</span>
+<span class="sd">        Create and use the scraper service::</span>
+<span class="sd">        </span>
+<span class="sd">            service = ScraperService()</span>
+<span class="sd">            </span>
+<span class="sd">            # Start a scraping job</span>
+<span class="sd">            job_id = await service.start_scraping_job(</span>
+<span class="sd">                site=&#39;tokopedia&#39;,</span>
+<span class="sd">                query=&#39;gaming laptop&#39;,</span>
+<span class="sd">                max_pages=3</span>
+<span class="sd">            )</span>
+<span class="sd">            </span>
+<span class="sd">            # Check job status</span>
+<span class="sd">            status = service.get_job_status(job_id)</span>
+<span class="sd">            print(f&quot;Job status: {status[&#39;status&#39;]}&quot;)</span>
+<span class="sd">            </span>
+<span class="sd">            # Get session statistics</span>
+<span class="sd">            stats = service.get_session_stats()</span>
+<span class="sd">            print(f&quot;Success rate: {stats[&#39;success_rate&#39;]:.1f}%&quot;)</span>
+<span class="sd">            </span>
+<span class="sd">    Note:</span>
+<span class="sd">        - Browser pool is automatically managed for performance optimization</span>
+<span class="sd">        - All jobs are tracked in the database for persistence</span>
+<span class="sd">        - Session statistics are maintained for monitoring and analysis</span>
+<span class="sd">        - Proper resource cleanup is guaranteed even on failures</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="ScraperService.__init__">
+<a class="viewcode-back" href="../../../modules.html#src.services.scraper_service.ScraperService.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize ScraperService with enhanced architecture.</span>
+<span class="sd">        </span>
+<span class="sd">        Sets up the database connection, utilities, job tracking, browser pool,</span>
+<span class="sd">        and session statistics. The browser pool is pre-configured for optimal</span>
+<span class="sd">        performance with async browser creation and reuse.</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: If database initialization fails</span>
+<span class="sd">            </span>
+<span class="sd">        Example:</span>
+<span class="sd">            Initialize the service::</span>
+<span class="sd">            </span>
+<span class="sd">                service = ScraperService()</span>
+<span class="sd">                print(f&quot;Service initialized with {service._browser_pool_size} browser pool&quot;)</span>
+<span class="sd">                </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - Browser pool starts empty and creates browsers on-demand</span>
+<span class="sd">            - Session statistics are reset on each initialization</span>
+<span class="sd">            - All running jobs are tracked in memory for this session</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">DatabaseManager</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">utils</span> <span class="o">=</span> <span class="n">Utils</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">running_jobs</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># Track running jobs for stopping</span>
+        
+        <span class="c1"># Browser pool for performance optimization</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_browser_pool</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_browser_pool_size</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_browser_lock</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        
+        <span class="c1"># Session statistics for monitoring</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;total_jobs&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;successful_jobs&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;failed_jobs&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;total_products&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;total_pages&#39;</span><span class="p">:</span> <span class="mi">0</span>
+        <span class="p">}</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🚀 Enhanced ScraperService initialized with browser pool&quot;</span><span class="p">)</span></div>
+
+    
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_get_browser_from_pool</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ScrapingOrchestrator</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get browser from pool or create new one asynchronously.</span>
+<span class="sd">        </span>
+<span class="sd">        This method implements the browser pool pattern for performance optimization.</span>
+<span class="sd">        It first attempts to reuse an available browser from the pool. If no browsers</span>
+<span class="sd">        are available, it creates a new one asynchronously using thread pool execution.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            ScrapingOrchestrator: A ready-to-use browser orchestrator instance</span>
+<span class="sd">            </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: If browser creation fails or pool operations encounter errors</span>
+<span class="sd">            </span>
+<span class="sd">        Example:</span>
+<span class="sd">            Get a browser for scraping::</span>
+<span class="sd">            </span>
+<span class="sd">                orchestrator = await service._get_browser_from_pool()</span>
+<span class="sd">                # Use orchestrator for scraping operations</span>
+<span class="sd">                await service._return_browser_to_pool(orchestrator)</span>
+<span class="sd">                </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - This method is thread-safe using async locks</span>
+<span class="sd">            - Browser creation is performed in a separate thread to avoid blocking</span>
+<span class="sd">            - Pool statistics are logged for monitoring</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_browser_lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_browser_pool</span><span class="p">:</span>
+                <span class="n">orchestrator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_browser_pool</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔄 Reusing browser from pool (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_browser_pool</span><span class="p">)</span><span class="si">}</span><span class="s2"> remaining)&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">orchestrator</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🏭 Creating new browser (pool empty)&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_browser_async</span><span class="p">()</span>
+    
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_return_browser_to_pool</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">orchestrator</span><span class="p">:</span> <span class="n">ScrapingOrchestrator</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return browser to pool for reuse or close if pool is full.</span>
+<span class="sd">        </span>
+<span class="sd">        This method implements proper browser lifecycle management by returning</span>
+<span class="sd">        browsers to the pool for reuse when possible, or safely closing them</span>
+<span class="sd">        when the pool is at capacity.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            orchestrator (ScrapingOrchestrator): The browser orchestrator to return</span>
+<span class="sd">            </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: If browser closure fails (logged but not re-raised)</span>
+<span class="sd">            </span>
+<span class="sd">        Example:</span>
+<span class="sd">            Return a browser after use::</span>
+<span class="sd">            </span>
+<span class="sd">                orchestrator = await service._get_browser_from_pool()</span>
+<span class="sd">                try:</span>
+<span class="sd">                    # Perform scraping operations</span>
+<span class="sd">                    products = orchestrator._scrape_query(&#39;tokopedia&#39;, &#39;laptop&#39;, 3)</span>
+<span class="sd">                finally:</span>
+<span class="sd">                    await service._return_browser_to_pool(orchestrator)</span>
+<span class="sd">                    </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - This method is thread-safe using async locks</span>
+<span class="sd">            - Excess browsers are safely closed when pool is full</span>
+<span class="sd">            - Pool statistics are logged for monitoring</span>
+<span class="sd">            - Errors during browser closure are logged but don&#39;t propagate</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_browser_lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_browser_pool</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_browser_pool_size</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_browser_pool</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">orchestrator</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔄 Returned browser to pool (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_browser_pool</span><span class="p">)</span><span class="si">}</span><span class="s2"> available)&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Pool is full, close this browser</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">orchestrator</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🗑️ Browser pool full, closed excess browser&quot;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Error closing excess browser: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_create_browser_async</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ScrapingOrchestrator</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create browser asynchronously in thread pool to avoid blocking.</span>
+<span class="sd">        </span>
+<span class="sd">        This method creates a new ScrapingOrchestrator with browser setup in a</span>
+<span class="sd">        separate thread to prevent blocking the main async event loop. The browser</span>
+<span class="sd">        is configured with headless mode and user profile for optimal performance.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            ScrapingOrchestrator: A fully configured browser orchestrator instance</span>
+<span class="sd">            </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: If browser setup fails or thread pool execution encounters errors</span>
+<span class="sd">            </span>
+<span class="sd">        Example:</span>
+<span class="sd">            Create a new browser asynchronously::</span>
+<span class="sd">            </span>
+<span class="sd">                orchestrator = await service._create_browser_async()</span>
+<span class="sd">                print(f&quot;Browser created successfully: {orchestrator is not None}&quot;)</span>
+<span class="sd">                </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - Browser creation runs in ThreadPoolExecutor to avoid blocking</span>
+<span class="sd">            - Browser is configured with headless=True and use_profile=True</span>
+<span class="sd">            - This method is called automatically by _get_browser_from_pool when needed</span>
+<span class="sd">            - Creation time is logged for performance monitoring</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">concurrent.futures</span>
+        
+        <span class="k">def</span><span class="w"> </span><span class="nf">_sync_browser_creation</span><span class="p">():</span>
+            <span class="n">orchestrator</span> <span class="o">=</span> <span class="n">ScrapingOrchestrator</span><span class="p">()</span>
+            <span class="n">success</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">setup_browser</span><span class="p">(</span><span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_profile</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">success</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Browser setup failed&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">orchestrator</span>
+        
+        <span class="c1"># Run browser creation in thread pool to avoid blocking</span>
+        <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">concurrent</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">ThreadPoolExecutor</span><span class="p">()</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+            <span class="n">orchestrator</span> <span class="o">=</span> <span class="k">await</span> <span class="n">loop</span><span class="o">.</span><span class="n">run_in_executor</span><span class="p">(</span><span class="n">executor</span><span class="p">,</span> <span class="n">_sync_browser_creation</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ Browser created asynchronously&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">orchestrator</span>
+    
+<div class="viewcode-block" id="ScraperService.start_scraping_job">
+<a class="viewcode-back" href="../../../modules.html#src.services.scraper_service.ScraperService.start_scraping_job">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">start_scraping_job</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_pages</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Start an asynchronous scraping job with enhanced tracking.</span>
+<span class="sd">        </span>
+<span class="sd">        This method creates a new scraping job, stores it in the database, and</span>
+<span class="sd">        starts the scraping process in the background. The job is tracked in memory</span>
+<span class="sd">        for real-time status updates and can be stopped if needed.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            site (str): The e-commerce site to scrape (&#39;tokopedia&#39; or &#39;shopee&#39;)</span>
+<span class="sd">            query (str): The search query/product keyword to scrape</span>
+<span class="sd">            max_pages (int, optional): Maximum number of pages to scrape. Defaults to 5.</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            str: Unique job ID for tracking the scraping job</span>
+<span class="sd">            </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: If job creation fails or database operations encounter errors</span>
+<span class="sd">            </span>
+<span class="sd">        Example:</span>
+<span class="sd">            Start a scraping job::</span>
+<span class="sd">            </span>
+<span class="sd">                job_id = await service.start_scraping_job(</span>
+<span class="sd">                    site=&#39;tokopedia&#39;,</span>
+<span class="sd">                    query=&#39;gaming laptop RTX 4060&#39;,</span>
+<span class="sd">                    max_pages=10</span>
+<span class="sd">                )</span>
+<span class="sd">                print(f&quot;Started job: {job_id}&quot;)</span>
+<span class="sd">                </span>
+<span class="sd">                # Check status later</span>
+<span class="sd">                status = service.get_job_status(job_id)</span>
+<span class="sd">                print(f&quot;Job status: {status[&#39;status&#39;]}&quot;)</span>
+<span class="sd">                </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - Job ID is a UUID4 string for uniqueness</span>
+<span class="sd">            - Job is immediately stored in database with &#39;pending&#39; status</span>
+<span class="sd">            - Scraping runs in background using asyncio.create_task</span>
+<span class="sd">            - Session statistics are updated automatically</span>
+<span class="sd">            - Job can be stopped using stop_scraping_job method</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">job_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+        
+        <span class="c1"># Update session stats</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_jobs&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="c1"># Create job in database</span>
+        <span class="n">job</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">create_job</span><span class="p">(</span><span class="n">job_id</span><span class="p">,</span> <span class="n">site</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📋 Created scraping job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">site</span><span class="si">}</span><span class="s2"> with query &#39;</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Start async scraping and track the task</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_execute_scraping</span><span class="p">(</span><span class="n">job_id</span><span class="p">,</span> <span class="n">site</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">max_pages</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">running_jobs</span><span class="p">[</span><span class="n">job_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;task&#39;</span><span class="p">:</span> <span class="n">task</span><span class="p">,</span>
+            <span class="s1">&#39;site&#39;</span><span class="p">:</span> <span class="n">site</span><span class="p">,</span>
+            <span class="s1">&#39;query&#39;</span><span class="p">:</span> <span class="n">query</span><span class="p">,</span>
+            <span class="s1">&#39;max_pages&#39;</span><span class="p">:</span> <span class="n">max_pages</span><span class="p">,</span>
+            <span class="s1">&#39;start_time&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+        <span class="p">}</span>
+        
+        <span class="k">return</span> <span class="n">job_id</span></div>
+
+    
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_execute_scraping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">site</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_pages</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute scraping using ScrapingOrchestrator from ace.py with browser pool.</span>
+<span class="sd">        </span>
+<span class="sd">        This is the core scraping execution method that handles the complete scraping</span>
+<span class="sd">        workflow: browser acquisition, scraping execution, data storage, and cleanup.</span>
+<span class="sd">        It uses the browser pool for performance optimization and provides comprehensive</span>
+<span class="sd">        error handling and logging.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            job_id (str): Unique identifier for the scraping job</span>
+<span class="sd">            site (str): The e-commerce site to scrape (&#39;tokopedia&#39; or &#39;shopee&#39;)</span>
+<span class="sd">            query (str): The search query/product keyword to scrape</span>
+<span class="sd">            max_pages (int): Maximum number of pages to scrape</span>
+<span class="sd">            </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            asyncio.CancelledError: If job is cancelled during execution</span>
+<span class="sd">            Exception: If browser acquisition, scraping, or data storage fails</span>
+<span class="sd">            </span>
+<span class="sd">        Example:</span>
+<span class="sd">            This method is called internally by start_scraping_job::</span>
+<span class="sd">            </span>
+<span class="sd">                # Internal usage - not called directly</span>
+<span class="sd">                await service._execute_scraping(&#39;job-123&#39;, &#39;tokopedia&#39;, &#39;laptop&#39;, 5)</span>
+<span class="sd">                </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - Browser is acquired from pool for performance optimization</span>
+<span class="sd">            - Job status is updated in database throughout execution</span>
+<span class="sd">            - Products are saved to database with job metadata</span>
+<span class="sd">            - Session statistics are updated on completion/failure</span>
+<span class="sd">            - Browser is always returned to pool in finally block</span>
+<span class="sd">            - Comprehensive logging with emoji indicators for easy monitoring</span>
+<span class="sd">            - Handles cancellation gracefully when job is stopped</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">orchestrator</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">page</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting scraping job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">site</span><span class="si">}</span><span class="s2"> with query &#39;</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">update_job_status</span><span class="p">(</span><span class="n">job_id</span><span class="p">,</span> <span class="s1">&#39;running&#39;</span><span class="p">)</span>
+            
+            <span class="c1"># Get browser from pool (async, much faster!)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">orchestrator</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_browser_from_pool</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ScrapingOrchestrator obtained from pool for job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get browser for job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Browser acquisition failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="c1"># Use orchestrator&#39;s _scrape_query method directly</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Check if job was cancelled before starting</span>
+                <span class="k">if</span> <span class="n">job_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">running_jobs</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2"> was cancelled before execution&quot;</span><span class="p">)</span>
+                    <span class="k">return</span>
+                
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using ScrapingOrchestrator to scrape </span><span class="si">{</span><span class="n">site</span><span class="si">}</span><span class="s2"> for &#39;</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&#39; with </span><span class="si">{</span><span class="n">max_pages</span><span class="si">}</span><span class="s2"> pages&quot;</span><span class="p">)</span>
+                
+                <span class="c1"># Use ace.py&#39;s robust scraping method</span>
+                <span class="n">products</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">_scrape_query</span><span class="p">(</span>
+                    <span class="n">site_name</span><span class="o">=</span><span class="n">site</span><span class="p">,</span>
+                    <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
+                    <span class="n">max_pages</span><span class="o">=</span><span class="n">max_pages</span><span class="p">,</span>
+                    <span class="n">scroll_depth</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                    <span class="n">delay_range</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+                <span class="p">)</span>
+                
+                <span class="k">if</span> <span class="n">products</span><span class="p">:</span>
+                    <span class="c1"># Add job metadata to products</span>
+                    <span class="k">for</span> <span class="n">product</span> <span class="ow">in</span> <span class="n">products</span><span class="p">:</span>
+                        <span class="n">product</span><span class="p">[</span><span class="s1">&#39;job_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">job_id</span>
+                        <span class="n">product</span><span class="p">[</span><span class="s1">&#39;site&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">site</span>
+                        <span class="n">product</span><span class="p">[</span><span class="s1">&#39;query&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">query</span>
+                    
+                    <span class="c1"># Save all products to database</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">save_products</span><span class="p">(</span><span class="n">products</span><span class="p">,</span> <span class="n">job_id</span><span class="p">)</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Saved </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">products</span><span class="p">)</span><span class="si">}</span><span class="s2"> products to database for job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save products for job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">raise</span>
+                    
+                    <span class="c1"># Update final page count from orchestrator stats</span>
+                    <span class="n">page</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">session_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_pages&#39;</span><span class="p">,</span> <span class="n">max_pages</span><span class="p">)</span>
+                    
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ ScrapingOrchestrator completed job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">products</span><span class="p">)</span><span class="si">}</span><span class="s2"> products from </span><span class="si">{</span><span class="n">page</span><span class="si">}</span><span class="s2"> pages&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ No products found for job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">page</span> <span class="o">=</span> <span class="mi">1</span>
+                
+                <span class="n">all_products</span> <span class="o">=</span> <span class="n">products</span> <span class="ow">or</span> <span class="p">[]</span>
+                
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ ScrapingOrchestrator failed for job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">raise</span>
+            
+            <span class="c1"># Complete job successfully</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Completed scraping job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_products</span><span class="p">)</span><span class="si">}</span><span class="s2"> total products from </span><span class="si">{</span><span class="n">page</span><span class="si">}</span><span class="s2"> pages&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">update_job_status</span><span class="p">(</span>
+                <span class="n">job_id</span><span class="p">,</span> 
+                <span class="s1">&#39;completed&#39;</span><span class="p">,</span> 
+                <span class="n">completed_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">),</span>
+                <span class="n">total_pages</span><span class="o">=</span><span class="n">page</span><span class="p">,</span>
+                <span class="n">products_found</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">all_products</span><span class="p">)</span>
+            <span class="p">)</span>
+            
+            <span class="c1"># Update session statistics</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;successful_jobs&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_products&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_products</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_pages&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">page</span>
+            
+        <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🛑 Job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2"> was cancelled&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">update_job_status</span><span class="p">(</span>
+                <span class="n">job_id</span><span class="p">,</span> 
+                <span class="s1">&#39;cancelled&#39;</span><span class="p">,</span> 
+                <span class="n">completed_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">),</span>
+                <span class="n">error_message</span><span class="o">=</span><span class="s2">&quot;Job was cancelled by user&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;failed_jobs&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2"> failed with error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">update_job_status</span><span class="p">(</span>
+                <span class="n">job_id</span><span class="p">,</span> 
+                <span class="s1">&#39;failed&#39;</span><span class="p">,</span> 
+                <span class="n">error_message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+                <span class="n">completed_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">),</span>
+                <span class="n">total_pages</span><span class="o">=</span><span class="n">page</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;failed_jobs&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># Return orchestrator to pool instead of closing</span>
+            <span class="k">if</span> <span class="n">orchestrator</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_return_browser_to_pool</span><span class="p">(</span><span class="n">orchestrator</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔄 Browser returned to pool for job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Error returning browser to pool for job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="c1"># Fallback: close browser if pool return fails</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">orchestrator</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="k">pass</span>
+            
+            <span class="c1"># Remove from running jobs (enhanced tracking)</span>
+            <span class="k">if</span> <span class="n">job_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">running_jobs</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">running_jobs</span><span class="p">[</span><span class="n">job_id</span><span class="p">]</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🗑️ Removed job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2"> from running jobs&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Note: URL building, product extraction, and scrolling now handled by ScrapingOrchestrator</span>
+    
+<div class="viewcode-block" id="ScraperService.get_job_status">
+<a class="viewcode-back" href="../../../modules.html#src.services.scraper_service.ScraperService.get_job_status">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_job_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get comprehensive job status from database.</span>
+<span class="sd">        </span>
+<span class="sd">        Retrieves the current status and details of a scraping job from the database.</span>
+<span class="sd">        Returns detailed information including progress, results, and any error messages.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            job_id (str): Unique identifier for the scraping job</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: Job status information containing:</span>
+<span class="sd">                - job_id (str): The job identifier</span>
+<span class="sd">                - status (str): Current job status (&#39;pending&#39;, &#39;running&#39;, &#39;completed&#39;, &#39;failed&#39;, &#39;cancelled&#39;, &#39;stopped&#39;)</span>
+<span class="sd">                - current_page (int): Current page being processed</span>
+<span class="sd">                - total_pages (int): Total pages processed</span>
+<span class="sd">                - products_found (int): Number of products found</span>
+<span class="sd">                - created_at (datetime): Job creation timestamp</span>
+<span class="sd">                - error_message (str): Error message if job failed</span>
+<span class="sd">                </span>
+<span class="sd">            None: If job with the given ID is not found</span>
+<span class="sd">            </span>
+<span class="sd">        Example:</span>
+<span class="sd">            Check job status::</span>
+<span class="sd">            </span>
+<span class="sd">                status = service.get_job_status(&#39;job-123&#39;)</span>
+<span class="sd">                if status:</span>
+<span class="sd">                    print(f&quot;Status: {status[&#39;status&#39;]}&quot;)</span>
+<span class="sd">                    print(f&quot;Progress: {status[&#39;current_page&#39;]}/{status[&#39;total_pages&#39;]}&quot;)</span>
+<span class="sd">                    print(f&quot;Products found: {status[&#39;products_found&#39;]}&quot;)</span>
+<span class="sd">                else:</span>
+<span class="sd">                    print(&quot;Job not found&quot;)</span>
+<span class="sd">                    </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - Database session is properly managed with try/finally</span>
+<span class="sd">            - Returns None if job doesn&#39;t exist</span>
+<span class="sd">            - All timestamps are in UTC</span>
+<span class="sd">            - Status values correspond to job lifecycle states</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_session</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">job</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">ScrapingJob</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">ScrapingJob</span><span class="o">.</span><span class="n">job_id</span> <span class="o">==</span> <span class="n">job_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">job</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s1">&#39;job_id&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">job_id</span><span class="p">,</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">status</span><span class="p">,</span>
+                    <span class="s1">&#39;current_page&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">current_page</span><span class="p">,</span>
+                    <span class="s1">&#39;total_pages&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">total_pages</span><span class="p">,</span>
+                    <span class="s1">&#39;products_found&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">products_found</span><span class="p">,</span>
+                    <span class="s1">&#39;created_at&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">created_at</span><span class="p">,</span>
+                    <span class="s1">&#39;error_message&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">error_message</span>
+                <span class="p">}</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">session</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="ScraperService.stop_scraping_job">
+<a class="viewcode-back" href="../../../modules.html#src.services.scraper_service.ScraperService.stop_scraping_job">[docs]</a>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stop_scraping_job</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stop a running scraping job with enhanced tracking.</span>
+<span class="sd">        </span>
+<span class="sd">        Gracefully stops a running scraping job by cancelling its async task and</span>
+<span class="sd">        updating the job status in the database. The browser used by the job is</span>
+<span class="sd">        properly returned to the pool for reuse.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            job_id (str): Unique identifier for the scraping job to stop</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if job was successfully stopped, False if job was not found</span>
+<span class="sd">            </span>
+<span class="sd">        Example:</span>
+<span class="sd">            Stop a running job::</span>
+<span class="sd">            </span>
+<span class="sd">                success = await service.stop_scraping_job(&#39;job-123&#39;)</span>
+<span class="sd">                if success:</span>
+<span class="sd">                    print(&quot;Job stopped successfully&quot;)</span>
+<span class="sd">                else:</span>
+<span class="sd">                    print(&quot;Job not found or already completed&quot;)</span>
+<span class="sd">                    </span>
+<span class="sd">                # Check final status</span>
+<span class="sd">                status = service.get_job_status(&#39;job-123&#39;)</span>
+<span class="sd">                print(f&quot;Final status: {status[&#39;status&#39;]}&quot;)</span>
+<span class="sd">                </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - Only affects jobs that are currently running</span>
+<span class="sd">            - Job status is updated to &#39;stopped&#39; in database</span>
+<span class="sd">            - Session statistics are updated to reflect the stopped job</span>
+<span class="sd">            - Browser resources are properly cleaned up</span>
+<span class="sd">            - Task cancellation is handled gracefully by _execute_scraping</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">job_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">running_jobs</span><span class="p">:</span>
+            <span class="n">job_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">running_jobs</span><span class="p">[</span><span class="n">job_id</span><span class="p">]</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="n">job_info</span><span class="p">[</span><span class="s1">&#39;task&#39;</span><span class="p">]</span>
+            
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🛑 Stopping job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">job_info</span><span class="p">[</span><span class="s1">&#39;site&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> - &#39;</span><span class="si">{</span><span class="n">job_info</span><span class="p">[</span><span class="s1">&#39;query&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+            <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+            
+            <span class="c1"># Update job status in database</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">update_job_status</span><span class="p">(</span>
+                <span class="n">job_id</span><span class="p">,</span> 
+                <span class="s1">&#39;stopped&#39;</span><span class="p">,</span> 
+                <span class="n">completed_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">),</span>
+                <span class="n">error_message</span><span class="o">=</span><span class="s2">&quot;Job stopped by user&quot;</span>
+            <span class="p">)</span>
+            
+            <span class="c1"># Update session stats</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;failed_jobs&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            
+            <span class="c1"># Remove from running jobs</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">running_jobs</span><span class="p">[</span><span class="n">job_id</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2"> stopped successfully&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2"> not found in running jobs&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+    
+<div class="viewcode-block" id="ScraperService.list_jobs">
+<a class="viewcode-back" href="../../../modules.html#src.services.scraper_service.ScraperService.list_jobs">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">list_jobs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        List all scraping jobs with comprehensive details.</span>
+<span class="sd">        </span>
+<span class="sd">        Retrieves a list of all scraping jobs from the database, ordered by creation</span>
+<span class="sd">        time (newest first). Limited to the most recent 50 jobs for performance.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            list: List of job dictionaries, each containing:</span>
+<span class="sd">                - job_id (str): Unique job identifier</span>
+<span class="sd">                - status (str): Current job status</span>
+<span class="sd">                - site (str): E-commerce site scraped</span>
+<span class="sd">                - query (str): Search query used</span>
+<span class="sd">                - current_page (int): Current/final page processed</span>
+<span class="sd">                - total_pages (int): Total pages processed</span>
+<span class="sd">                - products_found (int): Number of products found</span>
+<span class="sd">                - created_at (datetime): Job creation timestamp</span>
+<span class="sd">                - completed_at (datetime): Job completion timestamp (if completed)</span>
+<span class="sd">                - error_message (str): Error message (if failed)</span>
+<span class="sd">                </span>
+<span class="sd">        Example:</span>
+<span class="sd">            List and display all jobs::</span>
+<span class="sd">            </span>
+<span class="sd">                jobs = service.list_jobs()</span>
+<span class="sd">                print(f&quot;Found {len(jobs)} jobs:&quot;)</span>
+<span class="sd">                </span>
+<span class="sd">                for job in jobs:</span>
+<span class="sd">                    print(f&quot;ID: {job[&#39;job_id&#39;][:8]}...&quot;)</span>
+<span class="sd">                    print(f&quot;Site: {job[&#39;site&#39;]}, Query: {job[&#39;query&#39;]}&quot;)</span>
+<span class="sd">                    print(f&quot;Status: {job[&#39;status&#39;]}, Products: {job[&#39;products_found&#39;]}&quot;)</span>
+<span class="sd">                    print(f&quot;Created: {job[&#39;created_at&#39;]}&quot;)</span>
+<span class="sd">                    print(&quot;-&quot; * 40)</span>
+<span class="sd">                    </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - Results are ordered by creation time (newest first)</span>
+<span class="sd">            - Limited to 50 most recent jobs for performance</span>
+<span class="sd">            - Database session is properly managed</span>
+<span class="sd">            - All timestamps are in UTC</span>
+<span class="sd">            - Includes both completed and active jobs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">session</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">get_session</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">jobs</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">ScrapingJob</span><span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">ScrapingJob</span><span class="o">.</span><span class="n">created_at</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+            <span class="k">return</span> <span class="p">[{</span>
+                <span class="s1">&#39;job_id&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">job_id</span><span class="p">,</span>
+                <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">status</span><span class="p">,</span>
+                <span class="s1">&#39;site&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">site</span><span class="p">,</span>
+                <span class="s1">&#39;query&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">query</span><span class="p">,</span>
+                <span class="s1">&#39;current_page&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">current_page</span><span class="p">,</span>
+                <span class="s1">&#39;total_pages&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">total_pages</span><span class="p">,</span>
+                <span class="s1">&#39;products_found&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">products_found</span><span class="p">,</span>
+                <span class="s1">&#39;created_at&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">created_at</span><span class="p">,</span>
+                <span class="s1">&#39;completed_at&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">completed_at</span><span class="p">,</span>
+                <span class="s1">&#39;error_message&#39;</span><span class="p">:</span> <span class="n">job</span><span class="o">.</span><span class="n">error_message</span>
+            <span class="p">}</span> <span class="k">for</span> <span class="n">job</span> <span class="ow">in</span> <span class="n">jobs</span><span class="p">]</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">session</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="ScraperService.get_session_stats">
+<a class="viewcode-back" href="../../../modules.html#src.services.scraper_service.ScraperService.get_session_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_session_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get comprehensive session statistics like ace.py.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns detailed statistics about the current scraping session including</span>
+<span class="sd">        job counts, success rates, and performance metrics. Statistics are maintained</span>
+<span class="sd">        in memory and reset when the service is reinitialized.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: Session statistics containing:</span>
+<span class="sd">                - total_jobs (int): Total number of jobs started</span>
+<span class="sd">                - successful_jobs (int): Number of successfully completed jobs</span>
+<span class="sd">                - failed_jobs (int): Number of failed/stopped/cancelled jobs</span>
+<span class="sd">                - running_jobs (int): Number of currently running jobs</span>
+<span class="sd">                - total_products (int): Total products scraped across all jobs</span>
+<span class="sd">                - total_pages (int): Total pages processed across all jobs</span>
+<span class="sd">                - success_rate (float): Success rate percentage (0-100)</span>
+<span class="sd">                </span>
+<span class="sd">        Example:</span>
+<span class="sd">            Get and display session statistics::</span>
+<span class="sd">            </span>
+<span class="sd">                stats = service.get_session_stats()</span>
+<span class="sd">                print(f&quot;Jobs: {stats[&#39;successful_jobs&#39;]}/{stats[&#39;total_jobs&#39;]} successful&quot;)</span>
+<span class="sd">                print(f&quot;Success rate: {stats[&#39;success_rate&#39;]:.1f}%&quot;)</span>
+<span class="sd">                print(f&quot;Products scraped: {stats[&#39;total_products&#39;]}&quot;)</span>
+<span class="sd">                print(f&quot;Pages processed: {stats[&#39;total_pages&#39;]}&quot;)</span>
+<span class="sd">                </span>
+<span class="sd">                if stats[&#39;total_pages&#39;] &gt; 0:</span>
+<span class="sd">                    avg_products = stats[&#39;total_products&#39;] / stats[&#39;total_pages&#39;]</span>
+<span class="sd">                    print(f&quot;Average products per page: {avg_products:.1f}&quot;)</span>
+<span class="sd">                    </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - Statistics are maintained in memory for the current session</span>
+<span class="sd">            - Success rate is calculated as successful_jobs / total_jobs * 100</span>
+<span class="sd">            - Running jobs count reflects real-time active jobs</span>
+<span class="sd">            - Statistics are updated automatically as jobs complete</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;total_jobs&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_jobs&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;successful_jobs&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;successful_jobs&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;failed_jobs&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;failed_jobs&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;running_jobs&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">running_jobs</span><span class="p">),</span>
+            <span class="s1">&#39;total_products&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_products&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;total_pages&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_pages&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;success_rate&#39;</span><span class="p">:</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;successful_jobs&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_jobs&#39;</span><span class="p">]))</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="p">}</span></div>
+
+    
+<div class="viewcode-block" id="ScraperService.print_session_summary">
+<a class="viewcode-back" href="../../../modules.html#src.services.scraper_service.ScraperService.print_session_summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">print_session_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Print comprehensive session summary like ace.py.</span>
+<span class="sd">        </span>
+<span class="sd">        Displays a formatted summary of the current scraping session statistics</span>
+<span class="sd">        including job counts, success rates, and performance metrics. Uses logging</span>
+<span class="sd">        for consistent output formatting with emoji indicators.</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            Print session summary::</span>
+<span class="sd">            </span>
+<span class="sd">                service.print_session_summary()</span>
+<span class="sd">                </span>
+<span class="sd">                # Output:</span>
+<span class="sd">                # 📊 SCRAPER SERVICE SESSION SUMMARY</span>
+<span class="sd">                # ==================================================</span>
+<span class="sd">                # Total jobs: 15</span>
+<span class="sd">                # Successful jobs: 12</span>
+<span class="sd">                # Failed jobs: 3</span>
+<span class="sd">                # Currently running: 2</span>
+<span class="sd">                # Total products scraped: 1,247</span>
+<span class="sd">                # Total pages processed: 45</span>
+<span class="sd">                # Success rate: 80.0%</span>
+<span class="sd">                # Average products per page: 27.7</span>
+<span class="sd">                </span>
+<span class="sd">        Note:</span>
+<span class="sd">            - Uses logger.info for consistent formatting</span>
+<span class="sd">            - Includes emoji indicators for visual clarity</span>
+<span class="sd">            - Calculates and displays average products per page if applicable</span>
+<span class="sd">            - Summary includes both historical and real-time data</span>
+<span class="sd">            - Automatically called by some CLI tools for session reporting</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_session_stats</span><span class="p">()</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;📊 SCRAPER SERVICE SESSION SUMMARY&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total jobs: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;total_jobs&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successful jobs: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;successful_jobs&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed jobs: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;failed_jobs&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Currently running: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;running_jobs&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total products scraped: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;total_products&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total pages processed: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;total_pages&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Success rate: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;success_rate&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;total_pages&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">avg_products</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;total_products&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;total_pages&#39;</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average products per page: </span><span class="si">{</span><span class="n">avg_products</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ClaudeScrap Project.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

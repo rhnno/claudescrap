@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.utils.storage &mdash; ClaudeScrap 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ClaudeScrap
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ClaudeScrap</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">src.utils.storage</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for src.utils.storage</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Data Storage Module for Scraping Operations.</span>
+
+<span class="sd">This module provides the DataStorage class for handling file operations</span>
+<span class="sd">related to web scraping, including saving HTML content and processed</span>
+<span class="sd">data to various formats.</span>
+
+<span class="sd">Example:</span>
+<span class="sd">    Basic usage of the data storage::</span>
+
+<span class="sd">        storage = DataStorage()</span>
+<span class="sd">        storage.save_html(html_content, &quot;laptop&quot;, 1)</span>
+<span class="sd">        storage.save_to_csv(product_list, &quot;gaming_laptop&quot;)</span>
+
+<span class="sd">Note:</span>
+<span class="sd">    Automatically creates necessary directory structure and handles</span>
+<span class="sd">    file encoding for proper Unicode support.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
+
+<div class="viewcode-block" id="DataStorage">
+<a class="viewcode-back" href="../../../modules.html#src.utils.storage.DataStorage">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DataStorage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handles all file operations for scraping data.</span>
+<span class="sd">    </span>
+<span class="sd">    This class manages the storage of HTML content and processed data</span>
+<span class="sd">    from web scraping operations. It provides methods for saving raw</span>
+<span class="sd">    HTML and converting processed data to CSV format.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        html_folder (str): Directory path for storing raw HTML files</span>
+<span class="sd">        csv_folder (str): Directory path for storing processed CSV files</span>
+<span class="sd">    </span>
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; storage = DataStorage()</span>
+<span class="sd">        &gt;&gt;&gt; storage.save_html(&quot;&lt;html&gt;...&lt;/html&gt;&quot;, &quot;laptop&quot;, 1)</span>
+<span class="sd">        &gt;&gt;&gt; storage.save_to_csv(products, &quot;gaming_laptop&quot;)</span>
+<span class="sd">    </span>
+<span class="sd">    Note:</span>
+<span class="sd">        Automatically creates necessary directories if they don&#39;t exist.</span>
+<span class="sd">        All files are saved with UTF-8 encoding for Unicode support.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="DataStorage.__init__">
+<a class="viewcode-back" href="../../../modules.html#src.utils.storage.DataStorage.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize DataStorage with default folder structure.</span>
+<span class="sd">        </span>
+<span class="sd">        Sets up the directory paths for HTML and CSV storage and</span>
+<span class="sd">        ensures the directories exist.</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Creates &#39;data/raw_html&#39; and &#39;data/processed&#39; directories</span>
+<span class="sd">            if they don&#39;t already exist.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">html_folder</span> <span class="o">=</span> <span class="s2">&quot;data/raw_html&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">csv_folder</span> <span class="o">=</span> <span class="s2">&quot;data/processed&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_folders</span><span class="p">()</span></div>
+
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_folders</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create necessary folders if they don&#39;t exist.</span>
+<span class="sd">        </span>
+<span class="sd">        Creates the HTML and CSV storage directories using os.makedirs</span>
+<span class="sd">        with exist_ok=True to avoid errors if directories already exist.</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Called automatically during initialization to ensure</span>
+<span class="sd">            proper directory structure is available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">html_folder</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">csv_folder</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="DataStorage.save_html">
+<a class="viewcode-back" href="../../../modules.html#src.utils.storage.DataStorage.save_html">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_html</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">html_content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">page_num</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save HTML content to file with structured naming.</span>
+<span class="sd">        </span>
+<span class="sd">        Saves raw HTML content to a file with a standardized naming</span>
+<span class="sd">        convention for easy organization and retrieval.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            html_content (str): Raw HTML content to save</span>
+<span class="sd">            query (str): Search query used for this content</span>
+<span class="sd">            page_num (int): Page number for this content</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            str: Full path to the saved HTML file</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            IOError: If file writing fails</span>
+<span class="sd">            UnicodeEncodeError: If content encoding fails</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; storage = DataStorage()</span>
+<span class="sd">            &gt;&gt;&gt; path = storage.save_html(&quot;&lt;html&gt;...&lt;/html&gt;&quot;, &quot;laptop&quot;, 1)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Saved to: {path}&quot;)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Files are named with pattern: page_{query}_{page_num:03d}.html</span>
+<span class="sd">            All content is saved with UTF-8 encoding.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;page_</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">page_num</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">.html&quot;</span>
+        <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">html_folder</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">html_content</span><span class="p">)</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Saved: </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">filepath</span></div>
+
+    
+<div class="viewcode-block" id="DataStorage.save_to_csv">
+<a class="viewcode-back" href="../../../modules.html#src.utils.storage.DataStorage.save_to_csv">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">listings</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save product listings to CSV file with predefined structure.</span>
+<span class="sd">        </span>
+<span class="sd">        Converts a list of product dictionaries to a CSV file with</span>
+<span class="sd">        standardized column headers and UTF-8 encoding.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            listings (List[Dict[str, Any]]): List of product dictionaries to save</span>
+<span class="sd">            query (str): Search query used for this data (used in filename)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            str: Full path to the saved CSV file</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            IOError: If file writing fails</span>
+<span class="sd">            KeyError: If required product fields are missing</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; products = [</span>
+<span class="sd">            ...     {&#39;Product Title&#39;: &#39;Gaming Laptop&#39;, &#39;Price&#39;: &#39;Rp 15.000.000&#39;},</span>
+<span class="sd">            ...     {&#39;Product Title&#39;: &#39;Office Laptop&#39;, &#39;Price&#39;: &#39;Rp 8.000.000&#39;}</span>
+<span class="sd">            ... ]</span>
+<span class="sd">            &gt;&gt;&gt; storage = DataStorage()</span>
+<span class="sd">            &gt;&gt;&gt; path = storage.save_to_csv(products, &quot;laptop&quot;)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            CSV includes standard e-commerce fields: title, price, sold count,</span>
+<span class="sd">            discount, original price, shop name, location, rating, and product link.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Product_Data_</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">.csv&quot;</span>
+        <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">csv_folder</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+        
+        <span class="n">fieldnames</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;Product Title&#39;</span><span class="p">,</span> <span class="s1">&#39;Price&#39;</span><span class="p">,</span> <span class="s1">&#39;Sold&#39;</span><span class="p">,</span> <span class="s1">&#39;discount&#39;</span><span class="p">,</span> 
+            <span class="s1">&#39;Before Discount Price&#39;</span><span class="p">,</span> <span class="s1">&#39;Shop Name&#39;</span><span class="p">,</span> <span class="s1">&#39;location&#39;</span><span class="p">,</span> 
+            <span class="s1">&#39;Rating&#39;</span><span class="p">,</span> <span class="s1">&#39;Link Product&#39;</span>
+        <span class="p">]</span>
+        
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictWriter</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">fieldnames</span><span class="o">=</span><span class="n">fieldnames</span><span class="p">)</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">writeheader</span><span class="p">()</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">(</span><span class="n">listings</span><span class="p">)</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ CSV saved: </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">filepath</span></div>
+</div>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ClaudeScrap Project.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

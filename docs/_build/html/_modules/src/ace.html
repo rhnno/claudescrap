@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.ace &mdash; ClaudeScrap 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=8d563738"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ClaudeScrap
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ClaudeScrap</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">src.ace</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for src.ace</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Scraping Orchestrator for Enhanced Tokopedia Scraper</span>
+<span class="sd">Production-ready orchestrator that uses trained ML models for intelligent scraping</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># Using proper package imports</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.utils.browser</span><span class="w"> </span><span class="kn">import</span> <span class="n">BrowserManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.utils.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">RandomUtils</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">selenium.webdriver.common.by</span><span class="w"> </span><span class="kn">import</span> <span class="n">By</span>
+
+<div class="viewcode-block" id="ScrapingOrchestrator">
+<a class="viewcode-back" href="../../modules.html#src.ace.ScrapingOrchestrator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ScrapingOrchestrator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A rule-based orchestrator for scraping e-commerce sites.</span>
+<span class="sd">    </span>
+<span class="sd">    This class manages the entire scraping workflow including browser setup,</span>
+<span class="sd">    batch processing of multiple sites and queries, data extraction, and</span>
+<span class="sd">    result saving in multiple formats.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        browser (Optional[BrowserManager]): Browser instance for web scraping</span>
+<span class="sd">        utils (RandomUtils): Utility functions for random delays and operations</span>
+<span class="sd">        session_stats (Dict[str, Any]): Statistics tracking for the current session</span>
+<span class="sd">    </span>
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; orchestrator = ScrapingOrchestrator()</span>
+<span class="sd">        &gt;&gt;&gt; orchestrator.setup_browser(headless=True)</span>
+<span class="sd">        &gt;&gt;&gt; config = {&quot;sites&quot;: [{&quot;name&quot;: &quot;tokopedia&quot;, &quot;queries&quot;: [&quot;laptop&quot;]}]}</span>
+<span class="sd">        &gt;&gt;&gt; results = orchestrator.run_batch_scraping(config)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="ScrapingOrchestrator.__init__">
+<a class="viewcode-back" href="../../modules.html#src.ace.ScrapingOrchestrator.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the scraping orchestrator.</span>
+<span class="sd">        </span>
+<span class="sd">        Sets up initial state including browser placeholder, utility functions,</span>
+<span class="sd">        and session statistics tracking.</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            ImportError: If required dependencies are not available</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Browser is not initialized until setup_browser() is called</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">BrowserManager</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">utils</span> <span class="o">=</span> <span class="n">RandomUtils</span><span class="p">()</span>
+        
+        <span class="c1"># Scraping statistics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;start_time&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;total_products&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;total_pages&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;sites_scraped&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;queries_processed&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;errors&#39;</span><span class="p">:</span> <span class="mi">0</span>
+        <span class="p">}</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🚀 Scraping Orchestrator initialized&quot;</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="ScrapingOrchestrator.setup_browser">
+<a class="viewcode-back" href="../../modules.html#src.ace.ScrapingOrchestrator.setup_browser">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_browser</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">headless</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">use_profile</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Setup browser for production scraping.</span>
+<span class="sd">        </span>
+<span class="sd">        Initializes a BrowserManager instance with specified configuration</span>
+<span class="sd">        for web scraping operations.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            headless (bool, optional): Run browser in headless mode. Defaults to False.</span>
+<span class="sd">            use_profile (bool, optional): Use persistent browser profile. Defaults to True.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if browser setup successful, False otherwise</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: Various browser-related exceptions during setup</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; orchestrator = ScrapingOrchestrator()</span>
+<span class="sd">            &gt;&gt;&gt; success = orchestrator.setup_browser(headless=True, use_profile=False)</span>
+<span class="sd">            &gt;&gt;&gt; if success:</span>
+<span class="sd">            ...     print(&quot;Browser ready for scraping&quot;)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Uses &#39;research_profile&#39; as the default profile name for consistency</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">browser</span> <span class="o">=</span> <span class="n">BrowserManager</span><span class="p">(</span>
+                <span class="n">headless</span><span class="o">=</span><span class="n">headless</span><span class="p">,</span>
+                <span class="n">use_profile</span><span class="o">=</span><span class="n">use_profile</span><span class="p">,</span>
+                <span class="n">profile_name</span><span class="o">=</span><span class="s2">&quot;research_profile&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">setup_driver</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Browser setup for production scraping&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Browser setup failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+    
+<div class="viewcode-block" id="ScrapingOrchestrator.run_batch_scraping">
+<a class="viewcode-back" href="../../modules.html#src.ace.ScrapingOrchestrator.run_batch_scraping">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_batch_scraping</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scraping_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run batch scraping based on configuration.</span>
+<span class="sd">        </span>
+<span class="sd">        Processes multiple sites and queries according to the provided configuration,</span>
+<span class="sd">        collecting product data and saving results in specified formats.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            scraping_config (Dict[str, Any]): Configuration dictionary containing:</span>
+<span class="sd">                - sites (List[Dict]): List of site configurations with queries</span>
+<span class="sd">                - output_format (List[str]): Output formats like [&#39;csv&#39;, &#39;excel&#39;, &#39;json&#39;]</span>
+<span class="sd">                - delay_range (List[int]): Min/max delay range in seconds</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Dict[str, Any]: Nested dictionary with structure:</span>
+<span class="sd">                {site_name: {query: [product_list]}}</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If browser not initialized or invalid configuration</span>
+<span class="sd">            Exception: Various scraping-related errors</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; config = {</span>
+<span class="sd">            ...     &quot;sites&quot;: [{</span>
+<span class="sd">            ...         &quot;name&quot;: &quot;tokopedia&quot;,</span>
+<span class="sd">            ...         &quot;queries&quot;: [&quot;laptop&quot;, &quot;smartphone&quot;],</span>
+<span class="sd">            ...         &quot;max_pages&quot;: 10,</span>
+<span class="sd">            ...         &quot;scroll_depth&quot;: 3</span>
+<span class="sd">            ...     }],</span>
+<span class="sd">            ...     &quot;output_format&quot;: [&quot;csv&quot;, &quot;excel&quot;, &quot;json&quot;],</span>
+<span class="sd">            ...     &quot;delay_range&quot;: [1, 3]</span>
+<span class="sd">            ... }</span>
+<span class="sd">            &gt;&gt;&gt; results = orchestrator.run_batch_scraping(config)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Updates session statistics during execution and saves results</span>
+<span class="sd">            automatically upon completion</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🚀 Starting batch scraping...&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;start_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        
+        <span class="n">all_results</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="k">for</span> <span class="n">site_config</span> <span class="ow">in</span> <span class="n">scraping_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sites&#39;</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="n">site_name</span> <span class="o">=</span> <span class="n">site_config</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🌐 Processing site: </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="n">site_results</span> <span class="o">=</span> <span class="p">{}</span>
+            
+            <span class="k">for</span> <span class="n">query</span> <span class="ow">in</span> <span class="n">site_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;queries&#39;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🔍 Query: </span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Scrape products for this query</span>
+                    <span class="n">products</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scrape_query</span><span class="p">(</span>
+                        <span class="n">site_name</span><span class="o">=</span><span class="n">site_name</span><span class="p">,</span>
+                        <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
+                        <span class="n">max_pages</span><span class="o">=</span><span class="n">site_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_pages&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+                        <span class="n">scroll_depth</span><span class="o">=</span><span class="n">site_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;scroll_depth&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+                        <span class="n">delay_range</span><span class="o">=</span><span class="n">scraping_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;delay_range&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+                    <span class="p">)</span>
+                    
+                    <span class="k">if</span> <span class="n">products</span><span class="p">:</span>
+                        <span class="n">site_results</span><span class="p">[</span><span class="n">query</span><span class="p">]</span> <span class="o">=</span> <span class="n">products</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_products&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">products</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;queries_processed&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">products</span><span class="p">)</span><span class="si">}</span><span class="s2"> products collected for &#39;</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ No products found for &#39;</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+                
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Error scraping &#39;</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;errors&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">continue</span>
+            
+            <span class="k">if</span> <span class="n">site_results</span><span class="p">:</span>
+                <span class="n">all_results</span><span class="p">[</span><span class="n">site_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">site_results</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;sites_scraped&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="c1"># Save results</span>
+        <span class="k">if</span> <span class="n">all_results</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_save_batch_results</span><span class="p">(</span><span class="n">all_results</span><span class="p">,</span> <span class="n">scraping_config</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_print_session_summary</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ No results to save&quot;</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">all_results</span></div>
+
+    
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_scrape_query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_pages</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> 
+                     <span class="n">scroll_depth</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">delay_range</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scrape a single query for a given site.</span>
+<span class="sd">        </span>
+<span class="sd">        Performs the complete scraping workflow for a specific query on a target site,</span>
+<span class="sd">        including URL construction, navigation, pagination, and data extraction.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            site_name (str): Name of the target site (&#39;tokopedia&#39;, &#39;shopee&#39;)</span>
+<span class="sd">            query (str): Search query string</span>
+<span class="sd">            max_pages (int): Maximum number of pages to scrape</span>
+<span class="sd">            scroll_depth (int): Number of scroll actions per page</span>
+<span class="sd">            delay_range (List[int]): [min, max] delay range in seconds</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Dict[str, Any]]: List of extracted product dictionaries</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If browser not initialized or unknown site</span>
+<span class="sd">            Exception: Various scraping-related errors</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; products = orchestrator._scrape_query(</span>
+<span class="sd">            ...     site_name=&quot;tokopedia&quot;,</span>
+<span class="sd">            ...     query=&quot;laptop gaming&quot;,</span>
+<span class="sd">            ...     max_pages=5,</span>
+<span class="sd">            ...     scroll_depth=3,</span>
+<span class="sd">            ...     delay_range=[1, 3]</span>
+<span class="sd">            ... )</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Handles pagination automatically and respects rate limiting</span>
+<span class="sd">            through random delays</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c1"># Build URL based on site</span>
+        <span class="k">if</span> <span class="n">site_name</span> <span class="o">==</span> <span class="s1">&#39;tokopedia&#39;</span><span class="p">:</span>
+            <span class="n">search_query_url</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="s1">&#39;%20&#39;</span><span class="p">)</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://www.tokopedia.com/search?st=product&amp;q=</span><span class="si">{</span><span class="n">search_query_url</span><span class="si">}</span><span class="s2">&amp;page=1&quot;</span>
+        <span class="k">elif</span> <span class="n">site_name</span> <span class="o">==</span> <span class="s1">&#39;shopee&#39;</span><span class="p">:</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;https://shopee.co.id/search?keyword=</span><span class="si">{</span><span class="n">query</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Unknown site: </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        
+        <span class="c1"># Navigate to search page</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Browser not initialized. Call setup_browser() first.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">navigate_to</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+        
+        <span class="n">all_products</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">page_num</span> <span class="o">=</span> <span class="mi">1</span>
+        
+        <span class="k">while</span> <span class="n">page_num</span> <span class="o">&lt;=</span> <span class="n">max_pages</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📄 Processing page </span><span class="si">{</span><span class="n">page_num</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+            
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_perform_scroll</span><span class="p">(</span><span class="n">scroll_depth</span><span class="p">)</span>
+                
+                <span class="c1"># Extract products from current page</span>
+                <span class="n">page_products</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_products_from_page</span><span class="p">()</span>
+                
+                <span class="k">if</span> <span class="n">page_products</span><span class="p">:</span>
+                    <span class="n">all_products</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">page_products</span><span class="p">)</span>
+                    <span class="n">valid_products</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">page_products</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;Name not found&quot;</span><span class="p">]</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">valid_products</span><span class="p">)</span><span class="si">}</span><span class="s2"> valid products on page </span><span class="si">{</span><span class="n">page_num</span><span class="si">}</span><span class="s2"> (total extracted: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">page_products</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                    
+                    <span class="c1"># Increment page number and stats BEFORE pagination</span>
+                    <span class="n">page_num</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_pages&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    
+                    <span class="c1"># Only try pagination if we haven&#39;t reached max pages</span>
+                    <span class="k">if</span> <span class="n">page_num</span> <span class="o">&lt;=</span> <span class="n">max_pages</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_pagination</span><span class="p">():</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🏁 No more pages available or pagination failed.&quot;</span><span class="p">)</span>
+                            <span class="k">break</span>
+                        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">random_delay</span><span class="p">(</span><span class="n">delay_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">delay_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🏁 Reached maximum pages (</span><span class="si">{</span><span class="n">max_pages</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                        <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🏁 No products found. Assuming end of results.&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+                
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Error on page </span><span class="si">{</span><span class="n">page_num</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+                <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+                <span class="k">break</span> <span class="c1"># Exit loop on page error</span>
+        
+        <span class="k">return</span> <span class="n">all_products</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_perform_scroll</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">depth_scroll</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform scrolling to load content.</span>
+<span class="sd">        </span>
+<span class="sd">        Executes JavaScript scrolling actions to trigger lazy loading</span>
+<span class="sd">        of dynamic content on the page.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            depth_scroll (int): Number of scroll actions to perform</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If browser or driver not available</span>
+<span class="sd">            Exception: JavaScript execution or scrolling errors</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; orchestrator._perform_scroll(3)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Includes random delays between scrolls to mimic human behavior</span>
+<span class="sd">            and avoid triggering anti-bot detection</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">driver</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Browser or driver not available&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">depth_scroll</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">execute_script</span><span class="p">(</span><span class="s2">&quot;window.scrollTo(0, document.body.scrollHeight);&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">random_delay</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Scrolling error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_products_from_page</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract products from current page.</span>
+<span class="sd">        </span>
+<span class="sd">        Parses the current page DOM to extract product information including</span>
+<span class="sd">        names, prices, and URLs using multiple CSS selector fallbacks.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            List[Dict[str, Any]]: List of product dictionaries with keys:</span>
+<span class="sd">                - name (str): Product name</span>
+<span class="sd">                - price (str): Product price</span>
+<span class="sd">                - url (str): Product URL</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If browser or driver not available</span>
+<span class="sd">            Exception: DOM parsing or element extraction errors</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; products = orchestrator._extract_products_from_page()</span>
+<span class="sd">            &gt;&gt;&gt; for product in products:</span>
+<span class="sd">            ...     print(f&quot;{product[&#39;name&#39;]}: {product[&#39;price&#39;]}&quot;)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Uses multiple CSS selector fallbacks for robustness against</span>
+<span class="sd">            site layout changes. Limits extraction to 60 products per page</span>
+<span class="sd">            for performance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">driver</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Browser or driver not available&quot;</span><span class="p">)</span>
+                
+            <span class="kn">from</span><span class="w"> </span><span class="nn">selenium.webdriver.common.by</span><span class="w"> </span><span class="kn">import</span> <span class="n">By</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">selenium.common.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">NoSuchElementException</span>
+            
+            <span class="n">products</span> <span class="o">=</span> <span class="p">[]</span>
+            
+            <span class="c1"># Updated Tokopedia product selectors based on current structure</span>
+            <span class="n">product_selectors</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="s1">&#39;div[class=&quot;css-5wh65g&quot;]&#39;</span>
+            <span class="p">]</span>
+            
+            <span class="n">product_elements</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">selector</span> <span class="ow">in</span> <span class="n">product_selectors</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">elements</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">find_elements</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="n">selector</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">elements</span><span class="p">:</span>
+                        <span class="n">product_elements</span> <span class="o">=</span> <span class="n">elements</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">elements</span><span class="p">)</span><span class="si">}</span><span class="s2"> products using selector: </span><span class="si">{</span><span class="n">selector</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">break</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">continue</span>
+            
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">product_elements</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ No product elements found with any selector&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="p">[]</span>
+            
+            <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">product_elements</span><span class="p">[:</span><span class="mi">60</span><span class="p">]:</span>  <span class="c1"># Limit to first 60 products per page</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">product</span> <span class="o">=</span> <span class="p">{}</span>
+                    
+                    <span class="c1"># Extract product name with multiple selector fallbacks</span>
+                    <span class="n">name_selectors</span> <span class="o">=</span> <span class="p">[</span>
+                        <span class="s1">&#39;span[class=&quot;+tnoqZhn89+NHUA43BpiJg==&quot;]&#39;</span>
+                    <span class="p">]</span>
+                    
+                    <span class="n">product</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Name not found&quot;</span>
+                    <span class="k">for</span> <span class="n">name_selector</span> <span class="ow">in</span> <span class="n">name_selectors</span><span class="p">:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">name_elem</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="n">name_selector</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="n">name_elem</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+                                <span class="n">product</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name_elem</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                                <span class="k">break</span>
+                        <span class="k">except</span><span class="p">:</span>
+                            <span class="k">continue</span>
+                    
+                    <span class="c1"># Extract price with multiple selector fallbacks</span>
+                    <span class="n">price_selectors</span> <span class="o">=</span> <span class="p">[</span>
+                        <span class="s1">&#39;div[class=&quot;urMOIDHH7I0Iy1Dv2oFaNw==&quot;]&#39;</span>
+                    <span class="p">]</span>
+                    
+                    <span class="n">product</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Price not found&quot;</span>
+                    <span class="k">for</span> <span class="n">price_selector</span> <span class="ow">in</span> <span class="n">price_selectors</span><span class="p">:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">price_elem</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="n">price_selector</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="n">price_elem</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+                                <span class="n">product</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">price_elem</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                                <span class="k">break</span>
+                        <span class="k">except</span><span class="p">:</span>
+                            <span class="k">continue</span>
+                    
+                    <span class="c1"># Extract product URL with multiple approaches</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="c1"># Try to find the main product link</span>
+                        <span class="n">link_elem</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s1">&#39;a[href*=&quot;/p/&quot;]&#39;</span><span class="p">)</span>
+                        <span class="n">product</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">link_elem</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="c1"># Fallback to any link</span>
+                            <span class="n">link_elem</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span>
+                            <span class="n">href</span> <span class="o">=</span> <span class="n">link_elem</span><span class="o">.</span><span class="n">get_attribute</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="n">href</span> <span class="ow">and</span> <span class="s1">&#39;tokopedia.com&#39;</span> <span class="ow">in</span> <span class="n">href</span><span class="p">:</span>
+                                <span class="n">product</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">href</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">product</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;URL not found&quot;</span>
+                        <span class="k">except</span><span class="p">:</span>
+                            <span class="n">product</span><span class="p">[</span><span class="s1">&#39;url&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;URL not found&quot;</span>
+                    
+                    <span class="c1"># Only add products with valid names</span>
+                    <span class="k">if</span> <span class="n">product</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;Name not found&quot;</span><span class="p">:</span>
+                        <span class="n">products</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">product</span><span class="p">)</span>
+                
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Error extracting product: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+            
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Extracted </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">products</span><span class="p">)</span><span class="si">}</span><span class="s2"> valid products from page&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">products</span>
+            
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Product extraction failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+    
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_handle_pagination</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle pagination navigation using URL-based approach.</span>
+<span class="sd">        </span>
+<span class="sd">        Safely navigates to the next page using URL manipulation instead of</span>
+<span class="sd">        clicking elements to avoid bot detection honeypots.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if pagination successful, False if no more pages</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If browser or driver not available</span>
+<span class="sd">            Exception: Navigation or URL manipulation errors</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; if orchestrator._handle_pagination():</span>
+<span class="sd">            ...     print(&quot;Moved to next page&quot;)</span>
+<span class="sd">            ... else:</span>
+<span class="sd">            ...     print(&quot;No more pages available&quot;)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Uses URL parameter manipulation to avoid clicking pagination</span>
+<span class="sd">            elements which may be honeypots for bot detection. Includes</span>
+<span class="sd">            verification that navigation actually occurred.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c1"># URL-based pagination only - no clicking to avoid honeypots</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">driver</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Browser or driver not available&quot;</span><span class="p">)</span>
+                
+            <span class="n">current_url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">current_url</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 Current URL: </span><span class="si">{</span><span class="n">current_url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="n">next_url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_next_page_url</span><span class="p">(</span><span class="n">current_url</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 Next URL: </span><span class="si">{</span><span class="n">next_url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">next_url</span> <span class="o">!=</span> <span class="n">current_url</span><span class="p">:</span>  <span class="c1"># Ensure URL actually changed</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">navigate_to</span><span class="p">(</span><span class="n">next_url</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>  <span class="c1"># Longer wait for page load</span>
+                
+                <span class="c1"># Verify we actually navigated to the new page</span>
+                <span class="n">final_url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">current_url</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔍 Final URL after navigation: </span><span class="si">{</span><span class="n">final_url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                
+                <span class="k">if</span> <span class="n">final_url</span> <span class="o">!=</span> <span class="n">current_url</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Pagination via URL manipulation successful&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ URL navigation failed - browser stayed on same page&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ URL pagination failed - no page parameter increment possible&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+                
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ URL pagination failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_batch_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save batch results in multiple formats with organized directory structure.</span>
+<span class="sd">        </span>
+<span class="sd">        Processes and saves scraping results in various formats (CSV, Excel, JSON)</span>
+<span class="sd">        with organized directory structure and meaningful filenames.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            results (Dict[str, Any]): Nested results dictionary {site: {query: [products]}}</span>
+<span class="sd">            config (Dict[str, Any]): Configuration containing output format preferences</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            OSError: Directory creation or file writing errors</span>
+<span class="sd">            Exception: Data processing or format conversion errors</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; results = {&quot;tokopedia&quot;: {&quot;laptop&quot;: [{&quot;name&quot;: &quot;Gaming Laptop&quot;}]}}</span>
+<span class="sd">            &gt;&gt;&gt; config = {&quot;output_format&quot;: [&quot;csv&quot;, &quot;excel&quot;]}</span>
+<span class="sd">            &gt;&gt;&gt; orchestrator._save_batch_results(results, config)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Creates timestamped filenames and organized directory structure.</span>
+<span class="sd">            Flattens nested results and adds metadata (query, site) to each product.</span>
+<span class="sd">            Creates separate Excel sheets for each site.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span>
+        <span class="n">output_formats</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;output_format&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;csv&#39;</span><span class="p">,</span> <span class="s1">&#39;excel&#39;</span><span class="p">])</span>
+        
+        <span class="c1"># **CUSTOMIZE OUTPUT NAME HERE** - Change this line to modify the base filename</span>
+        <span class="c1"># Extract query names from results to include in filename</span>
+        <span class="n">query_names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">site_name</span><span class="p">,</span> <span class="n">site_data</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">query</span> <span class="ow">in</span> <span class="n">site_data</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">query_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        
+        <span class="c1"># Create filename with query names (limit to first 3 queries to avoid long filenames)</span>
+        <span class="k">if</span> <span class="n">query_names</span><span class="p">:</span>
+            <span class="n">query_part</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">query_names</span><span class="p">[:</span><span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">)</span>
+            <span class="n">base_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">query_part</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">base_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;batch_scraping_results_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">&quot;</span>
+        
+        <span class="c1"># Create directories if they don&#39;t exist</span>
+        <span class="n">directories</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;csv&#39;</span><span class="p">:</span> <span class="s1">&#39;data/raw/product_csv&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;excel&#39;</span><span class="p">:</span> <span class="s1">&#39;data/raw/product_excel&#39;</span><span class="p">,</span> 
+            <span class="s1">&#39;json&#39;</span><span class="p">:</span> <span class="s1">&#39;data/raw/product_json&#39;</span>
+        <span class="p">}</span>
+        
+        <span class="k">for</span> <span class="n">format_type</span><span class="p">,</span> <span class="n">directory</span> <span class="ow">in</span> <span class="n">directories</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">format_type</span> <span class="ow">in</span> <span class="n">output_formats</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        
+        <span class="c1"># Flatten results for saving</span>
+        <span class="n">all_products</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">site_name</span><span class="p">,</span> <span class="n">site_data</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">query</span><span class="p">,</span> <span class="n">products</span> <span class="ow">in</span> <span class="n">site_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">product</span> <span class="ow">in</span> <span class="n">products</span><span class="p">:</span>
+                    <span class="n">product</span><span class="p">[</span><span class="s1">&#39;query&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">query</span>
+                    <span class="n">product</span><span class="p">[</span><span class="s1">&#39;site&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">site_name</span>
+                    <span class="n">all_products</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">product</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">all_products</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ No products to save&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        
+        <span class="c1"># Save in requested formats with organized paths</span>
+        <span class="k">if</span> <span class="s1">&#39;csv&#39;</span> <span class="ow">in</span> <span class="n">output_formats</span><span class="p">:</span>
+            <span class="n">csv_file</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;raw/product_csv/</span><span class="si">{</span><span class="n">base_filename</span><span class="si">}</span><span class="s2">.csv&quot;</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">all_products</span><span class="p">)</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">csv_file</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ CSV saved: </span><span class="si">{</span><span class="n">csv_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ CSV save failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;excel&#39;</span> <span class="ow">in</span> <span class="n">output_formats</span><span class="p">:</span>
+            <span class="n">excel_file</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;raw/product_excel/</span><span class="si">{</span><span class="n">base_filename</span><span class="si">}</span><span class="s2">.xlsx&quot;</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">all_products</span><span class="p">)</span>
+                <span class="k">with</span> <span class="n">pd</span><span class="o">.</span><span class="n">ExcelWriter</span><span class="p">(</span><span class="n">excel_file</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;openpyxl&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">writer</span><span class="p">:</span>
+                    <span class="n">df</span><span class="o">.</span><span class="n">to_excel</span><span class="p">(</span><span class="n">writer</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sheet_name</span><span class="o">=</span><span class="s1">&#39;All Results&#39;</span><span class="p">)</span>
+                    
+                    <span class="c1"># Create separate sheets for each site</span>
+                    <span class="k">for</span> <span class="n">site_name</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="n">site_products</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">all_products</span> <span class="k">if</span> <span class="n">p</span><span class="p">[</span><span class="s1">&#39;site&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">site_name</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">site_products</span><span class="p">:</span>
+                            <span class="n">site_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">site_products</span><span class="p">)</span>
+                            <span class="n">site_df</span><span class="o">.</span><span class="n">to_excel</span><span class="p">(</span><span class="n">writer</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sheet_name</span><span class="o">=</span><span class="n">site_name</span><span class="o">.</span><span class="n">title</span><span class="p">())</span>
+                
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Excel saved: </span><span class="si">{</span><span class="n">excel_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Excel save failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;json&#39;</span> <span class="ow">in</span> <span class="n">output_formats</span><span class="p">:</span>
+            <span class="n">json_file</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;raw/product_json/</span><span class="si">{</span><span class="n">base_filename</span><span class="si">}</span><span class="s2">.json&quot;</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">json_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ JSON saved: </span><span class="si">{</span><span class="n">json_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ JSON save failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_print_session_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Print session summary statistics.</span>
+<span class="sd">        </span>
+<span class="sd">        Displays comprehensive statistics about the completed scraping session</span>
+<span class="sd">        including duration, counts, and performance metrics.</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; orchestrator._print_session_summary()</span>
+<span class="sd">            📊 SCRAPING SESSION SUMMARY</span>
+<span class="sd">            ============================================================</span>
+<span class="sd">            Duration: 0:15:30</span>
+<span class="sd">            Sites scraped: 2</span>
+<span class="sd">            Total products: 150</span>
+<span class="sd">            ...</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Calculates session duration from stored start time and computes</span>
+<span class="sd">            average products per page for performance insights.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">end_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;start_time&#39;</span><span class="p">]</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📊 SCRAPING SESSION SUMMARY&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sites scraped: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;sites_scraped&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Queries processed: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;queries_processed&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total pages: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_pages&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total products: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_products&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Errors: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;errors&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_pages&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">avg_products_per_page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_products&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">session_stats</span><span class="p">[</span><span class="s1">&#39;total_pages&#39;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average products per page: </span><span class="si">{</span><span class="n">avg_products_per_page</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="ScrapingOrchestrator.close">
+<a class="viewcode-back" href="../../modules.html#src.ace.ScrapingOrchestrator.close">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up resources.</span>
+<span class="sd">        </span>
+<span class="sd">        Properly closes the browser instance and releases associated resources</span>
+<span class="sd">        to prevent memory leaks and zombie processes.</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; orchestrator.close()</span>
+<span class="sd">            ✅ Browser closed</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Should always be called when scraping is complete or in exception</span>
+<span class="sd">            handlers to ensure proper cleanup.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">browser</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">browser</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Browser closed&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_next_page_url</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Intelligently increment the page number in a URL.</span>
+<span class="sd">        </span>
+<span class="sd">        Handles various pagination URL patterns including &#39;page=X&#39;, &#39;p=X&#39;,</span>
+<span class="sd">        and non-standard &#39;{page=X}&#39; formats. Adds pagination if none exists.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            current_url (str): Current page URL</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            str: URL for the next page</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; url = &quot;https://site.com/search?q=laptop&amp;page=1&quot;</span>
+<span class="sd">            &gt;&gt;&gt; next_url = orchestrator._get_next_page_url(url)</span>
+<span class="sd">            &gt;&gt;&gt; print(next_url)</span>
+<span class="sd">            https://site.com/search?q=laptop&amp;page=2</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            If no page parameter exists, assumes page 1 and adds page=2.</span>
+<span class="sd">            Handles multiple URL parameter patterns for different sites.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+        
+        <span class="c1"># Regex to find &#39;page=...&#39; or &#39;p=...&#39;</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;(page|p)=(\d+)&#39;</span><span class="p">,</span> <span class="n">current_url</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+            <span class="n">param_name</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">page_num</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+            <span class="n">next_page_num</span> <span class="o">=</span> <span class="n">page_num</span> <span class="o">+</span> <span class="mi">1</span>
+            
+            <span class="c1"># Replace the old page number with the new one</span>
+            <span class="n">old_param</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">page_num</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">new_param</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">next_page_num</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">return</span> <span class="n">current_url</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">old_param</span><span class="p">,</span> <span class="n">new_param</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        
+        <span class="c1"># Handle the non-standard {page=...} format</span>
+        <span class="n">match_special</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;{page=(\d+)}&#39;</span><span class="p">,</span> <span class="n">current_url</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match_special</span><span class="p">:</span>
+            <span class="n">page_num</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">match_special</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">next_page_num</span> <span class="o">=</span> <span class="n">page_num</span> <span class="o">+</span> <span class="mi">1</span>
+
+            <span class="n">old_param</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">{{</span><span class="s2">page=</span><span class="si">{</span><span class="n">page_num</span><span class="si">}</span><span class="se">}}</span><span class="s2">&quot;</span>
+            <span class="n">new_param</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">{{</span><span class="s2">page=</span><span class="si">{</span><span class="n">next_page_num</span><span class="si">}</span><span class="se">}}</span><span class="s2">&quot;</span>
+            <span class="k">return</span> <span class="n">current_url</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">old_param</span><span class="p">,</span> <span class="n">new_param</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># If no page parameter is found, assume page 1 and add page=2</span>
+        <span class="k">if</span> <span class="s1">&#39;?&#39;</span> <span class="ow">in</span> <span class="n">current_url</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">current_url</span><span class="si">}</span><span class="s2">&amp;page=2&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">current_url</span><span class="si">}</span><span class="s2">?page=2&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="load_scraping_config">
+<a class="viewcode-back" href="../../modules.html#src.ace.load_scraping_config">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_scraping_config</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load or create scraping configuration.</span>
+<span class="sd">    </span>
+<span class="sd">    Attempts to load configuration from a JSON file, creating a default</span>
+<span class="sd">    configuration if the file doesn&#39;t exist or is invalid.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Dict[str, Any]: Configuration dictionary containing sites, queries,</span>
+<span class="sd">            output formats, and scraping parameters</span>
+<span class="sd">    </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        OSError: File system errors during config file operations</span>
+<span class="sd">        json.JSONDecodeError: Invalid JSON in existing config file</span>
+<span class="sd">    </span>
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; config = load_scraping_config()</span>
+<span class="sd">        &gt;&gt;&gt; print(config[&#39;sites&#39;][0][&#39;name&#39;])</span>
+<span class="sd">        tokopedia</span>
+<span class="sd">    </span>
+<span class="sd">    Note:</span>
+<span class="sd">        Creates &#39;config/scraping_config.json&#39; with default settings if</span>
+<span class="sd">        the file doesn&#39;t exist. Default includes tokopedia with common</span>
+<span class="sd">        product queries.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">config_file</span> <span class="o">=</span> <span class="s2">&quot;config/scraping_config.json&quot;</span>
+    
+    <span class="n">default_config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;sites&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;tokopedia&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;queries&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;laptop&quot;</span><span class="p">,</span> <span class="s2">&quot;smartphone&quot;</span><span class="p">,</span> <span class="s2">&quot;sepatu&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;max_pages&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+                <span class="s2">&quot;scroll_depth&quot;</span><span class="p">:</span> <span class="mi">3</span>
+            <span class="p">}</span>
+        <span class="p">],</span>
+        <span class="s2">&quot;output_format&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span> <span class="s2">&quot;excel&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;delay_range&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+    <span class="p">}</span>
+    
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">config_file</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Configuration loaded from </span><span class="si">{</span><span class="n">config_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">config</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Error loading config: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">, using default&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Save default config</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">default_config</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Default configuration saved to </span><span class="si">{</span><span class="n">config_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Error saving config: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">default_config</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../modules.html#src.ace.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Main scraping orchestrator function.</span>
+<span class="sd">    </span>
+<span class="sd">    Interactive command-line interface for configuring and running</span>
+<span class="sd">    batch scraping operations. Handles user input, browser setup,</span>
+<span class="sd">    and execution coordination.</span>
+<span class="sd">    </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        KeyboardInterrupt: User interruption during scraping</span>
+<span class="sd">        Exception: Various scraping-related errors</span>
+<span class="sd">    </span>
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; main()</span>
+<span class="sd">        🕷️ Simple Scraping Orchestrator</span>
+<span class="sd">        ============================================================</span>
+<span class="sd">        📋 Current Configuration:</span>
+<span class="sd">        Sites: [&#39;tokopedia&#39;]</span>
+<span class="sd">        ...</span>
+<span class="sd">    </span>
+<span class="sd">    Note:</span>
+<span class="sd">        Provides interactive prompts for configuration confirmation</span>
+<span class="sd">        and execution options. Ensures proper cleanup even on errors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🕷️ Simple Scraping Orchestrator&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    
+    <span class="c1"># Load configuration</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">load_scraping_config</span><span class="p">()</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;📋 Current Configuration:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sites: </span><span class="si">{</span><span class="p">[</span><span class="n">site</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">site</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;sites&#39;</span><span class="p">]]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total queries: </span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">site</span><span class="p">[</span><span class="s1">&#39;queries&#39;</span><span class="p">])</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">site</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;sites&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output formats: </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;output_format&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Ask for confirmation or modification</span>
+    <span class="n">proceed</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🚀 Proceed with this configuration? (y/n): &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="n">proceed</span> <span class="o">!=</span> <span class="s1">&#39;y&#39;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;👋 Cancelled&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    
+    <span class="c1"># Additional settings</span>
+    <span class="n">use_headless</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;🖥️ Run in headless mode? (y/n, default n): &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;y&#39;</span>
+    
+    <span class="c1"># Initialize orchestrator</span>
+    <span class="n">orchestrator</span> <span class="o">=</span> <span class="n">ScrapingOrchestrator</span><span class="p">()</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Setup browser</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">setup_browser</span><span class="p">(</span><span class="n">headless</span><span class="o">=</span><span class="n">use_headless</span><span class="p">,</span> <span class="n">use_profile</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ Failed to setup browser&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        
+        <span class="c1"># Run batch scraping</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🚀 Starting batch scraping...&quot;</span><span class="p">)</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">run_batch_scraping</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ Batch scraping completed successfully!&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;📁 Check output files for results&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">❌ No results obtained&quot;</span><span class="p">)</span>
+    
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">⏹️ Scraping interrupted by user&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Scraping failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+        <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">orchestrator</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ClaudeScrap Project.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
