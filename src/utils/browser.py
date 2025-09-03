@@ -8,13 +8,14 @@ import time
 import os
 import json
 from pathlib import Path
+from typing import Optional, Dict, Any
 
 class BrowserManager:
     """Handles all browser-related operations with persistent profile support"""
     
     def __init__(self, use_profile=True, profile_name="research_profile", headless=False):
-        self.driver = None
-        self.wait = None
+        self.driver: Optional[webdriver.Chrome] = None
+        self.wait: Optional[WebDriverWait] = None
         self.use_profile = use_profile
         self.profile_name = profile_name
         self.headless = headless
@@ -83,14 +84,19 @@ class BrowserManager:
             options.add_argument('--profile-directory=Default')
             print(f"🔧 Using Chrome profile: {self.profile_path}")
         
+        # Browser optimization flags for faster startup (from memory requirements)
+        options.add_argument('--no-first-run')
+        options.add_argument('--no-default-browser-check')
+        options.add_argument('--disable-default-apps')
+        options.add_argument('--disable-extensions')
+        options.add_argument('--disable-plugins')
+        
         # Enhanced stealth options
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-gpu')
         options.add_argument("--remote-debugging-port=9222")
         options.add_argument("--remote-debugging-address=0.0.0.0")
-        options.add_argument('--disable-extensions')
-        options.add_argument('--disable-plugins')
         options.add_argument('--disable-images')  # Faster loading
         options.add_argument('--disable-javascript')  # Can be removed if JS is needed
         
@@ -135,13 +141,19 @@ class BrowserManager:
             print(f"❌ Error setting up Chrome driver: {e}")
             raise
     
-    def navigate_to(self, url):
+    def navigate_to(self, url: str) -> bool:
         """Navigate to a URL and wait for page load"""
+        if not self.driver:
+            print("❌ Driver not initialized")
+            return False
         self.driver.get(url)
         return self.wait_for_page_load()
     
-    def wait_for_page_load(self, timeout=5):
+    def wait_for_page_load(self, timeout: int = 5) -> bool:
         """Wait for page to fully load with reduced timing"""
+        if not self.wait:
+            print("❌ WebDriverWait not initialized")
+            return False
         try:
             self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
             time.sleep(0.5)  # Reduced wait for dynamic content
@@ -150,8 +162,12 @@ class BrowserManager:
             print("⚠️ Page load timeout")
             return False
     
-    def auto_login(self, site_name):
+    def auto_login(self, site_name: str) -> bool:
         """Automatically login to specified site using saved credentials"""
+        if not self.driver or not self.wait:
+            print("❌ Browser not properly initialized")
+            return False
+            
         credentials = self._load_credentials()
         
         if site_name not in credentials:
@@ -181,8 +197,12 @@ class BrowserManager:
             print(f"❌ Auto-login failed for {site_name}: {e}")
             return False
     
-    def _login_tokopedia(self, creds):
+    def _login_tokopedia(self, creds: Dict[str, Any]) -> bool:
         """Login to Tokopedia"""
+        if not self.driver or not self.wait:
+            print("❌ Browser not properly initialized")
+            return False
+            
         try:
             # Wait for email input
             email_input = self.wait.until(
@@ -227,8 +247,12 @@ class BrowserManager:
             print(f"❌ Tokopedia login error: {e}")
             return False
     
-    def _login_shopee(self, creds):
+    def _login_shopee(self, creds: Dict[str, Any]) -> bool:
         """Login to Shopee"""
+        if not self.driver or not self.wait:
+            print("❌ Browser not properly initialized")
+            return False
+            
         try:
             # Wait for email/phone input
             email_input = self.wait.until(
@@ -266,8 +290,12 @@ class BrowserManager:
             print(f"❌ Shopee login error: {e}")
             return False
     
-    def _login_bukalapak(self, creds):
+    def _login_bukalapak(self, creds: Dict[str, Any]) -> bool:
         """Login to Bukalapak"""
+        if not self.driver or not self.wait:
+            print("❌ Browser not properly initialized")
+            return False
+            
         try:
             # Wait for email input
             email_input = self.wait.until(
@@ -305,8 +333,12 @@ class BrowserManager:
             print(f"❌ Bukalapak login error: {e}")
             return False
     
-    def check_login_status(self, site_name):
+    def check_login_status(self, site_name: str) -> bool:
         """Check if already logged in to a site"""
+        if not self.driver:
+            print("❌ Driver not initialized")
+            return False
+            
         try:
             if site_name == 'tokopedia':
                 # Check for Tokopedia login indicators
@@ -349,14 +381,14 @@ class BrowserManager:
             print(f"⚠️ Error checking login status for {site_name}: {e}")
             return False
     
-    def ensure_login(self, site_name):
+    def ensure_login(self, site_name: str) -> bool:
         """Ensure user is logged in to the specified site"""
         if not self.check_login_status(site_name):
             print(f"🔐 Need to login to {site_name}")
             return self.auto_login(site_name)
         return True
     
-    def close(self):
+    def close(self) -> None:
         """Close the browser"""
         if self.driver:
             print("🔧 Closing browser and saving profile...")
