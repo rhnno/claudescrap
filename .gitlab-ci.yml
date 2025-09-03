@@ -1,0 +1,163 @@
+# GitLab CI/CD configuration for ScraperService
+stages:
+  - test
+  - security
+  - performance
+  - deploy
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  JWT_SECRET_KEY: "test-secret-key-gitlab"
+  DATABASE_URL: "sqlite:///test.db"
+
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+
+.python_template: &python_template
+  image: python:3.11-slim
+  before_script:
+    - python -m venv venv
+    - source venv/bin/activate
+    - pip install --upgrade pip
+    - pip install -r requirements.txt -r requirements_api.txt
+    - pip install pytest pytest-asyncio pytest-cov pytest-timeout
+
+# Unit Tests
+test:unit:
+  <<: *python_template
+  stage: test
+  script:
+    - source venv/bin/activate
+    - python tests/test_runner.py --unit --verbose
+  artifacts:
+    reports:
+      junit: junit.xml
+    paths:
+      - htmlcov/
+    expire_in: 1 week
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+
+# Integration Tests
+test:integration:
+  <<: *python_template
+  stage: test
+  script:
+    - source venv/bin/activate
+    - python tests/test_runner.py --integration --verbose
+  artifacts:
+    reports:
+      junit: junit.xml
+    expire_in: 1 week
+
+# API Tests
+test:api:
+  <<: *python_template
+  stage: test
+  script:
+    - source venv/bin/activate
+    - python tests/test_runner.py --api --verbose
+  artifacts:
+    reports:
+      junit: junit.xml
+    expire_in: 1 week
+
+# Coverage Analysis
+test:coverage:
+  <<: *python_template
+  stage: test
+  script:
+    - source venv/bin/activate
+    - python tests/test_runner.py --coverage
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - htmlcov/
+    expire_in: 1 week
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+
+# Security Scanning
+security:lint:
+  <<: *python_template
+  stage: security
+  script:
+    - source venv/bin/activate
+    - pip install flake8 mypy
+    - python tests/test_runner.py --lint
+  allow_failure: true
+
+security:scan:
+  <<: *python_template
+  stage: security
+  script:
+    - source venv/bin/activate
+    - pip install safety bandit
+    - python tests/test_runner.py --security
+  artifacts:
+    reports:
+      sast: bandit-report.json
+  allow_failure: true
+
+# Performance Tests
+performance:benchmark:
+  <<: *python_template
+  stage: performance
+  script:
+    - source venv/bin/activate
+    - pip install pytest-benchmark
+    - python tests/test_runner.py --performance
+  artifacts:
+    paths:
+      - benchmark.json
+    expire_in: 1 week
+  only:
+    - main
+    - develop
+
+# Matrix Testing
+test:matrix:
+  <<: *python_template
+  stage: test
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.10", "3.11", "3.12"]
+  image: python:${PYTHON_VERSION}-slim
+  script:
+    - python tests/test_runner.py --unit --verbose
+
+# Full CI Test
+test:full:
+  <<: *python_template
+  stage: test
+  script:
+    - source venv/bin/activate
+    - python tests/test_runner.py --ci
+  artifacts:
+    reports:
+      junit: junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - htmlcov/
+      - benchmark.json
+    expire_in: 1 week
+  only:
+    - main
+    - merge_requests
+
+# Deployment (placeholder)
+deploy:staging:
+  stage: deploy
+  script:
+    - echo "Deploying to staging environment"
+    - echo "All tests passed, ready for deployment"
+  environment:
+    name: staging
+  only:
+    - main
+  when: manual
