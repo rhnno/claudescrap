@@ -12,7 +12,15 @@ from typing import Any
 import pytest
 import asyncio
 from unittest.mock import patch, Mock, AsyncMock
-from fastapi.testclient import TestClient
+# Robust import for CI/CD compatibility
+try:
+    from starlette.testclient import TestClient
+except ImportError:
+    try:
+        from fastapi.testclient import TestClient
+    except ImportError:
+        # Fallback for older versions
+        from fastapi import TestClient
 import jwt
 from datetime import datetime
 from src.api.scraping_api import app, scraper_service
