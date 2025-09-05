@@ -16,7 +16,7 @@ from pathlib import Path
 def run_command(cmd, description="", timeout=300):
     """Run a command and return success/failure status."""
     print(f"\n{'='*60}")
-    print(f"🏃 {description}")
+    print(f"[RUN] {description}")
     print(f"{'='*60}")
     print(f"Command: {' '.join(cmd)}")
     print()
@@ -35,17 +35,17 @@ def run_command(cmd, description="", timeout=300):
         duration = end_time - start_time
         
         if result.returncode == 0:
-            print(f"\n✅ {description} PASSED ({duration:.2f}s)")
+            print(f"\n[PASS] {description} PASSED ({duration:.2f}s)")
             return True
         else:
-            print(f"\n❌ {description} FAILED ({duration:.2f}s)")
+            print(f"\n[FAIL] {description} FAILED ({duration:.2f}s)")
             return False
             
     except subprocess.TimeoutExpired:
-        print(f"\n⏰ {description} TIMEOUT after {timeout}s")
+        print(f"\n[TIMEOUT] {description} TIMEOUT after {timeout}s")
         return False
     except Exception as e:
-        print(f"\n💥 {description} ERROR: {e}")
+        print(f"\n[ERROR] {description} ERROR: {e}")
         return False
 
 
@@ -151,6 +151,9 @@ def run_ci_tests(verbose=False):
     if verbose:
         cmd.extend(['-v', '-s'])
     
+    return run_command(cmd, "CI Environment Tests", timeout=300)
+
+
 def run_coverage_report():
     """Generate coverage report."""
     cmd = [
@@ -204,7 +207,7 @@ def run_all_tests(verbose=False, include_performance=False, include_security=Fal
     """Run all tests in sequence."""
     results = {}
     
-    print("🚀 Starting ScraperService Comprehensive Test Suite")
+    print("==> Starting ScraperService Comprehensive Test Suite")
     print(f"Python version: {sys.version}")
     print(f"Working directory: {os.getcwd()}")
     
@@ -233,25 +236,25 @@ def run_all_tests(verbose=False, include_performance=False, include_security=Fal
     
     # Summary
     print(f"\n{'='*60}")
-    print("📊 TEST SUMMARY")
+    print("=== TEST SUMMARY")
     print(f"{'='*60}")
     
     total_tests = len(results)
     passed_tests = sum(results.values())
     
     for test_name, passed in results.items():
-        status = "✅ PASS" if passed else "❌ FAIL"
+        status = "[PASS]" if passed else "[FAIL]"
         print(f"{test_name.upper():15} {status}")
     
-    print(f"\n📈 Overall: {passed_tests}/{total_tests} tests passed")
+    print(f"\n=== Overall: {passed_tests}/{total_tests} tests passed")
     success_rate = (passed_tests / total_tests) * 100
     print(f"Success rate: {success_rate:.1f}%")
     
     if passed_tests == total_tests:
-        print("\n🎉 All tests passed! Ready for deployment.")
+        print("\n[SUCCESS] All tests passed! Ready for deployment.")
         return True
     else:
-        print(f"\n⚠️  {total_tests - passed_tests} test(s) failed. Review and fix issues.")
+        print(f"\n[WARNING] {total_tests - passed_tests} test(s) failed. Review and fix issues.")
         return False
 
 
