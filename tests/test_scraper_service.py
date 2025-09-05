@@ -23,7 +23,7 @@ from src.models.database import ScrapingJob
 from src.ace import ScrapingOrchestrator
 from tests.conftest import (
     TEST_JOB_ID, TEST_SITE, TEST_QUERY, TEST_MAX_PAGES, TEST_SESSION_STATS,
-    AsyncContextManager, MockBrowserPool
+    MockBrowserPool
 )
 
 
@@ -181,7 +181,14 @@ class TestJobManagement:
                 mock_uuid.return_value = Mock()
                 mock_uuid.return_value.__str__ = Mock(return_value=TEST_JOB_ID)
                 
+                # Create a mock task that we can control
+                mock_task = Mock()
+                mock_create_task.return_value = mock_task
+                
                 job_id = await service.start_scraping_job(TEST_SITE, TEST_QUERY, TEST_MAX_PAGES)
+                
+                # Clean up the task to prevent warnings
+                mock_task.cancel()
         
         # Verify job creation
         service.db.create_job.assert_called_once_with(TEST_JOB_ID, TEST_SITE, TEST_QUERY)
@@ -363,10 +370,14 @@ class TestExecuteScrapingIntegration:
         
         with patch.object(service, '_get_browser_from_pool', return_value=mock_scraping_orchestrator):
             with patch.object(service, '_return_browser_to_pool'):
-                # Setup running job
-                service.running_jobs[TEST_JOB_ID] = {'task': Mock()}
+                # Setup running job - create a proper mock task
+                mock_task = Mock()
+                service.running_jobs[TEST_JOB_ID] = {'task': mock_task}
                 
                 await service._execute_scraping(TEST_JOB_ID, TEST_SITE, TEST_QUERY, TEST_MAX_PAGES)
+                
+                # Clean up the mock task
+                mock_task.cancel()
         
         # Verify database operations
         service.db.update_job_status.assert_any_call(TEST_JOB_ID, 'running')
@@ -382,9 +393,13 @@ class TestExecuteScrapingIntegration:
         service = scraper_service_with_mocks
         
         with patch.object(service, '_get_browser_from_pool', side_effect=Exception("Browser acquisition failed")):
-            service.running_jobs[TEST_JOB_ID] = {'task': Mock()}
+            mock_task = Mock()
+            service.running_jobs[TEST_JOB_ID] = {'task': mock_task}
             
             await service._execute_scraping(TEST_JOB_ID, TEST_SITE, TEST_QUERY, TEST_MAX_PAGES)
+            
+            # Clean up the mock task
+            mock_task.cancel()
         
         # Verify failure handling
         service.db.update_job_status.assert_any_call(TEST_JOB_ID, 'running')
@@ -403,9 +418,13 @@ class TestExecuteScrapingIntegration:
         
         with patch.object(service, '_get_browser_from_pool', return_value=mock_scraping_orchestrator):
             with patch.object(service, '_return_browser_to_pool'):
-                service.running_jobs[TEST_JOB_ID] = {'task': Mock()}
+                mock_task = Mock()
+                service.running_jobs[TEST_JOB_ID] = {'task': mock_task}
                 
                 await service._execute_scraping(TEST_JOB_ID, TEST_SITE, TEST_QUERY, TEST_MAX_PAGES)
+                
+                # Clean up the mock task
+                mock_task.cancel()
         
         # Verify cancellation handling
         calls = service.db.update_job_status.call_args_list

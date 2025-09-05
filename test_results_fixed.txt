@@ -1,0 +1,298 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.5, pytest-8.4.1, pluggy-1.6.0 -- F:\Data Scraping\Personal\claudescrap\venv\Scripts\python.exe
+cachedir: .pytest_cache
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+metadata: {'Python': '3.13.5', 'Platform': 'Windows-11-10.0.22631-SP0', 'Packages': {'pytest': '8.4.1', 'pluggy': '1.6.0'}, 'Plugins': {'anyio': '4.10.0', 'Faker': '37.6.0', 'asyncio': '1.1.0', 'benchmark': '5.1.0', 'cov': '6.2.1', 'html': '4.1.1', 'metadata': '3.1.1', 'mock': '3.14.1', 'timeout': '2.4.0', 'xdist': '3.8.0'}}
+rootdir: F:\Data Scraping\Personal\claudescrap
+configfile: pytest.ini
+plugins: anyio-4.10.0, Faker-37.6.0, asyncio-1.1.0, benchmark-5.1.0, cov-6.2.1, html-4.1.1, metadata-3.1.1, mock-3.14.1, timeout-2.4.0, xdist-3.8.0
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+timeout: 300.0s
+timeout method: thread
+timeout func_only: False
+collecting ... collected 28 items
+
+python : INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService 
+initialized with browser pool
+At line:1 char:45
++ ... audescrap"; python tests/test_runner.py --unit --verbose 2>&1 | Out-F ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (INFO:src.servic...th browser pool:String 
+   ) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+tests/test_scraper_service.py::TestScraperServiceInitialization::test_init_creates_required_attributes PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestScraperServiceInitialization::test_init_empty_browser_pool PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestScraperServiceInitialization::test_init_empty_running_jobs PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:\U0001f3ed Creating new browser (pool empty)
+tests/test_scraper_service.py::TestBrowserPoolManagement::test_get_browser_from_pool_empty_pool PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:\U0001f504 Reusing browser from pool (0 remaining)
+tests/test_scraper_service.py::TestBrowserPoolManagement::test_get_browser_from_pool_with_available_browser PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:\U0001f504 Returned browser to pool (1 available)
+tests/test_scraper_service.py::TestBrowserPoolManagement::test_return_browser_to_pool_not_full PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:\U0001f5d1\ufe0f Browser pool full, closed excess 
+browser
+tests/test_scraper_service.py::TestBrowserPoolManagement::test_return_browser_to_pool_full PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+ERROR:src.services.scraper_service:\u26a0\ufe0f Error closing excess browser: Close 
+error
+tests/test_scraper_service.py::TestBrowserPoolManagement::test_return_browser_to_pool_close_error PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:\u2705 Browser created asynchronously
+tests/test_scraper_service.py::TestBrowserPoolManagement::test_create_browser_async_success PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestBrowserPoolManagement::test_create_browser_async_setup_failure PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestJobManagement::test_start_scraping_job_success FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestJobManagement::test_get_job_status_existing_job FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestJobManagement::test_get_job_status_nonexistent_job FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:\U0001f6d1 Stopping job test-job-12345 for 
+tokopedia - 'gaming laptop'
+tests/test_scraper_service.py::TestJobManagement::test_stop_scraping_job_running FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+WARNING:src.services.scraper_service:\u26a0\ufe0f Job nonexistent-job not found in 
+running jobs
+tests/test_scraper_service.py::TestJobManagement::test_stop_scraping_job_not_running FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestJobManagement::test_list_jobs FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestSessionStatistics::test_get_session_stats PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestSessionStatistics::test_get_session_stats_no_jobs PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestSessionStatistics::test_print_session_summary PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestSessionStatistics::test_print_session_summary_with_avg_products PASSED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:Starting scraping job test-job-12345 for tokopedia 
+with query 'gaming laptop'
+ERROR:src.services.scraper_service:\u274c Job test-job-12345 failed with error: 
+'NoneType' object has no attribute 'update_job_status'
+tests/test_scraper_service.py::TestExecuteScrapingIntegration::test_execute_scraping_success FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:Starting scraping job test-job-12345 for tokopedia 
+with query 'gaming laptop'
+ERROR:src.services.scraper_service:\u274c Job test-job-12345 failed with error: 
+'NoneType' object has no attribute 'update_job_status'
+tests/test_scraper_service.py::TestExecuteScrapingIntegration::test_execute_scraping_browser_acquisition_failure FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:Starting scraping job test-job-12345 for tokopedia 
+with query 'gaming laptop'
+ERROR:src.services.scraper_service:\u274c Job test-job-12345 failed with error: 
+'NoneType' object has no attribute 'update_job_status'
+tests/test_scraper_service.py::TestExecuteScrapingIntegration::test_execute_scraping_cancelled FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:Starting scraping job test-job-12345 for tokopedia 
+with query 'gaming laptop'
+ERROR:src.services.scraper_service:\u274c Job test-job-12345 failed with error: 
+'NoneType' object has no attribute 'update_job_status'
+tests/test_scraper_service.py::TestExecuteScrapingIntegration::test_execute_scraping_no_products_found FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestErrorHandling::test_get_job_status_database_error FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestErrorHandling::test_list_jobs_database_error FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+tests/test_scraper_service.py::TestErrorHandling::test_start_scraping_job_database_error FAILED
+INFO:src.services.scraper_service:\U0001f680 Enhanced ScraperService initialized with 
+browser pool
+INFO:src.services.scraper_service:\U0001f504 Reusing browser from pool (0 remaining)
+INFO:src.services.scraper_service:\U0001f3ed Creating new browser (pool empty)
+tests/test_scraper_service.py::TestAsyncLocking::test_browser_pool_concurrent_access PASSED
+
+================================== FAILURES ===================================
+______________ TestJobManagement.test_start_scraping_job_success ______________
+tests\test_scraper_service.py:177: in test_start_scraping_job_success
+    service.db.create_job.return_value = mock_scraping_job
+    ^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'create_job'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+_____________ TestJobManagement.test_get_job_status_existing_job ______________
+tests\test_scraper_service.py:204: in test_get_job_status_existing_job
+    mock_session = service.db.get_session.return_value
+                   ^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'get_session'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+____________ TestJobManagement.test_get_job_status_nonexistent_job ____________
+tests\test_scraper_service.py:224: in test_get_job_status_nonexistent_job
+    mock_session = service.db.get_session.return_value
+                   ^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'get_session'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+______________ TestJobManagement.test_stop_scraping_job_running _______________
+tests\test_scraper_service.py:247: in test_stop_scraping_job_running
+    result = await service.stop_scraping_job(TEST_JOB_ID)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\services\scraper_service.py:552: in stop_scraping_job
+    self.db.update_job_status(
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'update_job_status'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+------------------------------ Captured log call ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:548 \U0001f6d1 Stopping job test-job-12345 for tokopedia - 'gaming laptop'
+____________ TestJobManagement.test_stop_scraping_job_not_running _____________
+tests\test_scraper_service.py:263: in test_stop_scraping_job_not_running
+    service.db.update_job_status.assert_not_called()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'update_job_status'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+------------------------------ Captured log call ------------------------------
+WARNING  src.services.scraper_service:scraper_service.py:567 \u26a0\ufe0f Job nonexistent-job not found in running jobs
+______________________ TestJobManagement.test_list_jobs _______________________
+tests\test_scraper_service.py:270: in test_list_jobs
+    mock_session = service.db.get_session.return_value
+                   ^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'get_session'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+________ TestExecuteScrapingIntegration.test_execute_scraping_success _________
+src\services\scraper_service.py:340: in _execute_scraping
+    self.db.update_job_status(job_id, 'running')
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'update_job_status'
+
+During handling of the above exception, another exception occurred:
+tests\test_scraper_service.py:369: in test_execute_scraping_success
+    await service._execute_scraping(TEST_JOB_ID, TEST_SITE, TEST_QUERY, TEST_MAX_PAGES)
+src\services\scraper_service.py:425: in _execute_scraping
+    self.db.update_job_status(
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'update_job_status'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+------------------------------ Captured log call ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:339 Starting scraping job test-job-12345 for tokopedia with query 'gaming laptop'\nERROR    src.services.scraper_service:scraper_service.py:424 \u274c Job test-job-12345 failed with error: 'NoneType' object has no attribute 'update_job_status'
+_ TestExecuteScrapingIntegration.test_execute_scraping_browser_acquisition_failure _
+src\services\scraper_service.py:340: in _execute_scraping
+    self.db.update_job_status(job_id, 'running')
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'update_job_status'
+
+During handling of the above exception, another exception occurred:
+tests\test_scraper_service.py:387: in test_execute_scraping_browser_acquisition_failure
+    await service._execute_scraping(TEST_JOB_ID, TEST_SITE, TEST_QUERY, TEST_MAX_PAGES)
+src\services\scraper_service.py:425: in _execute_scraping
+    self.db.update_job_status(
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'update_job_status'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+------------------------------ Captured log call ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:339 Starting scraping job test-job-12345 for tokopedia with query 'gaming laptop'\nERROR    src.services.scraper_service:scraper_service.py:424 \u274c Job test-job-12345 failed with error: 'NoneType' object has no attribute 'update_job_status'
+_______ TestExecuteScrapingIntegration.test_execute_scraping_cancelled ________
+src\services\scraper_service.py:340: in _execute_scraping
+    self.db.update_job_status(job_id, 'running')
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'update_job_status'
+
+During handling of the above exception, another exception occurred:
+tests\test_scraper_service.py:408: in test_execute_scraping_cancelled
+    await service._execute_scraping(TEST_JOB_ID, TEST_SITE, TEST_QUERY, TEST_MAX_PAGES)
+src\services\scraper_service.py:425: in _execute_scraping
+    self.db.update_job_status(
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'update_job_status'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+------------------------------ Captured log call ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:339 Starting scraping job test-job-12345 for tokopedia with query 'gaming laptop'\nERROR    src.services.scraper_service:scraper_service.py:424 \u274c Job test-job-12345 failed with error: 'NoneType' object has no attribute 'update_job_status'
+___ TestExecuteScrapingIntegration.test_execute_scraping_no_products_found ____
+src\services\scraper_service.py:340: in _execute_scraping
+    self.db.update_job_status(job_id, 'running')
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'update_job_status'
+
+During handling of the above exception, another exception occurred:
+tests\test_scraper_service.py:427: in test_execute_scraping_no_products_found
+    await service._execute_scraping(TEST_JOB_ID, TEST_SITE, TEST_QUERY, TEST_MAX_PAGES)
+src\services\scraper_service.py:425: in _execute_scraping
+    self.db.update_job_status(
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'update_job_status'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+------------------------------ Captured log call ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:339 Starting scraping job test-job-12345 for tokopedia with query 'gaming laptop'\nERROR    src.services.scraper_service:scraper_service.py:424 \u274c Job test-job-12345 failed with error: 'NoneType' object has no attribute 'update_job_status'
+____________ TestErrorHandling.test_get_job_status_database_error _____________
+tests\test_scraper_service.py:443: in test_get_job_status_database_error
+    service.db.get_session.side_effect = Exception("Database error")
+    ^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'get_session'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+_______________ TestErrorHandling.test_list_jobs_database_error _______________
+tests\test_scraper_service.py:451: in test_list_jobs_database_error
+    service.db.get_session.side_effect = Exception("Database error")
+    ^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'get_session'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+__________ TestErrorHandling.test_start_scraping_job_database_error ___________
+tests\test_scraper_service.py:460: in test_start_scraping_job_database_error
+    service.db.create_job.side_effect = Exception("Database error")
+    ^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'NoneType' object has no attribute 'create_job'
+----------------------------- Captured log setup ------------------------------
+INFO     src.services.scraper_service:scraper_service.py:120 \U0001f680 Enhanced ScraperService initialized with browser pool
+=========================== short test summary info ===========================
+FAILED tests/test_scraper_service.py::TestJobManagement::test_start_scraping_job_success
+FAILED tests/test_scraper_service.py::TestJobManagement::test_get_job_status_existing_job
+FAILED tests/test_scraper_service.py::TestJobManagement::test_get_job_status_nonexistent_job
+FAILED tests/test_scraper_service.py::TestJobManagement::test_stop_scraping_job_running
+FAILED tests/test_scraper_service.py::TestJobManagement::test_stop_scraping_job_not_running
+FAILED tests/test_scraper_service.py::TestJobManagement::test_list_jobs - Att...
+FAILED tests/test_scraper_service.py::TestExecuteScrapingIntegration::test_execute_scraping_success
+FAILED tests/test_scraper_service.py::TestExecuteScrapingIntegration::test_execute_scraping_browser_acquisition_failure
+FAILED tests/test_scraper_service.py::TestExecuteScrapingIntegration::test_execute_scraping_cancelled
+FAILED tests/test_scraper_service.py::TestExecuteScrapingIntegration::test_execute_scraping_no_products_found
+FAILED tests/test_scraper_service.py::TestErrorHandling::test_get_job_status_database_error
+FAILED tests/test_scraper_service.py::TestErrorHandling::test_list_jobs_database_error
+FAILED tests/test_scraper_service.py::TestErrorHandling::test_start_scraping_job_database_error
+======================== 13 failed, 15 passed in 1.60s ========================
+
+============================================================
+[RUN] Unit Tests
+============================================================
+Command: F:\Data Scraping\Personal\claudescrap\venv\Scripts\python.exe -m pytest tests/test_scraper_service.py -m unit or not integration --tb=short --timeout=300 -v -s
+
+
+[FAIL] Unit Tests FAILED (6.55s)
