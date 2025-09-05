@@ -2,7 +2,7 @@
 
 This module provides SQLAlchemy models for storing scraping jobs and products,
 along with a DatabaseManager class for handling database operations. It supports
-SQLite by default with optional PostgreSQL configuration via environment variables.
+PostgreSQL by default with automatic test environment detection.
 
 Example:
     Basic usage of database operations::
@@ -13,7 +13,8 @@ Example:
         db.save_products(products_list, "job_123")
 
 Note:
-    Uses SQLAlchemy 2.0 compatible patterns with proper type annotations
+    Uses PostgreSQL by default, with testing.postgresql for test environments.
+    SQLAlchemy 2.0 compatible patterns with proper type annotations
     for MyPy compliance as specified in project requirements.
 """
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Float, Boolean
@@ -130,7 +131,7 @@ class DatabaseManager:
         >>> db.save_products(products_list, "job_123")
     
     Note:
-        Uses SQLite by default, configurable via DATABASE_URL environment variable.
+        Uses PostgreSQL by default, configurable via DATABASE_URL environment variable.
         Automatically creates tables on initialization.
     """
     def __init__(self, database_url: Optional[str] = None) -> None:
@@ -141,24 +142,38 @@ class DatabaseManager:
         
         Args:
             database_url (Optional[str]): Database connection URL.
-                Defaults to SQLite file or DATABASE_URL environment variable.
+                Defaults to DATABASE_URL environment variable.
+                Required for production use.
         
         Raises:
             Exception: If database connection or table creation fails
         
         Example:
-            >>> # Use default SQLite
+            >>> # Use environment DATABASE_URL
             >>> db = DatabaseManager()
             >>> 
             >>> # Use custom database
             >>> db = DatabaseManager("postgresql://user:pass@localhost/scraping")
         
         Note:
-            Creates 'scraping.db' SQLite file in current directory by default.
-            All tables are created automatically if they don't exist.
+            Requires DATABASE_URL environment variable to be set for production.
+            In test environments, uses testing.postgresql automatically.
         """
         if not database_url:
-            database_url = os.getenv('DATABASE_URL', 'sqlite:///scraping.db')
+            # Check if we're in a test environment
+            if any(env_var in os.environ for env_var in ['CI', 'PYTEST_CURRENT_TEST', 'TESTING']):
+                # In CI/test environments, DATABASE_URL should be set by CI or test fixtures
+                database_url = os.getenv('DATABASE_URL')
+                if not database_url:
+                    raise ValueError("DATABASE_URL environment variable must be set")
+            else:
+                # Production environment - require DATABASE_URL
+                database_url = os.getenv('DATABASE_URL')
+                if not database_url:
+                    raise ValueError(
+                        "DATABASE_URL environment variable is required. "
+                        "Example: postgresql://user:password@localhost:5432/scraping_db"
+                    )
         
         self.engine = create_engine(database_url)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)

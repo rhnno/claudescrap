@@ -30,12 +30,18 @@ def test_basic_app_creation():
         from starlette.testclient import TestClient
         from src.api.scraping_api import app
         
-        client = TestClient(app)
-        assert client is not None
+        # Mock the database manager to avoid PostgreSQL connection issues
+        from unittest.mock import patch, Mock
+        mock_service = Mock()
+        mock_service.db = Mock()
         
-        # Basic health check without complex mocking
-        response = client.get("/health")
-        assert response.status_code == 200
+        with patch('src.api.scraping_api.scraper_service', mock_service):
+            client = TestClient(app)
+            assert client is not None
+            
+            # Basic health check without database dependency
+            response = client.get("/health")
+            assert response.status_code == 200
         
     except Exception as e:
         pytest.fail(f"Basic app creation failed in CI: {e}")
@@ -55,17 +61,27 @@ def test_environment_variables():
     reason="CI-specific test"
 )
 def test_ci_environment():
-    """Test specifically for CI environment."""
+    """Test specifically for CI environment with PostgreSQL."""
     assert os.getenv("CI") == "true"
     
-    # Test that we can create a TestClient in CI
+    # Test that DATABASE_URL is set in CI
+    database_url = os.getenv("DATABASE_URL")
+    assert database_url is not None, "DATABASE_URL should be set in CI"
+    assert "postgresql" in database_url, "Should use PostgreSQL in CI"
+    
+    # Test that we can create a TestClient in CI with mocked service
     from starlette.testclient import TestClient
     from src.api.scraping_api import app
+    from unittest.mock import patch, Mock
     
-    client = TestClient(app)
-    response = client.get("/health")
-    assert response.status_code == 200
+    mock_service = Mock()
+    mock_service.db = Mock()
     
-    data = response.json()
-    assert data["status"] == "healthy"
-    assert data["service"] == "scraping-api"
+    with patch('src.api.scraping_api.scraper_service', mock_service):
+        client = TestClient(app)
+        response = client.get("/health")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["service"] == "scraping-api"

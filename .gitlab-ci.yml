@@ -8,7 +8,11 @@ stages:
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   JWT_SECRET_KEY: "test-secret-key-gitlab"
-  DATABASE_URL: "sqlite:///test.db"
+  DATABASE_URL: "postgresql://test_user:test_pass@postgres:5432/test_db"
+  POSTGRES_DB: "test_db"
+  POSTGRES_USER: "test_user"
+  POSTGRES_PASSWORD: "test_pass"
+  POSTGRES_HOST_AUTH_METHOD: "trust"
 
 cache:
   paths:
@@ -17,12 +21,18 @@ cache:
 
 .python_template: &python_template
   image: python:3.11-slim
+  services:
+    - postgres:13-alpine
   before_script:
+    # Install system dependencies for PostgreSQL
+    - apt-get update -qq && apt-get install -y -qq postgresql-client gcc python3-dev libpq-dev postgresql-server-dev-all
     - python -m venv venv
     - source venv/bin/activate
     - pip install --upgrade pip
-    - pip install -r requirements.txt -r requirements_api.txt
-    - pip install pytest pytest-asyncio pytest-cov pytest-timeout
+    - pip install -r requirements.txt -r requirements_api.txt -r requirements_test.txt
+    # Wait for PostgreSQL to be ready
+    - until pg_isready -h postgres -p 5432 -U test_user; do echo "Waiting for postgres..."; sleep 2; done
+    - createdb -h postgres -U test_user test_db || true
 
 # Unit Tests
 test:unit:

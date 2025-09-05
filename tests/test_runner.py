@@ -52,7 +52,8 @@ def run_command(cmd, description="", timeout=300):
 def setup_environment():
     """Set up test environment variables."""
     os.environ['JWT_SECRET_KEY'] = 'test-secret-key'
-    os.environ['DATABASE_URL'] = 'sqlite:///test.db'
+    # DATABASE_URL should be set by CI or test fixtures
+    # Don't set a default SQLite URL anymore
     os.environ['PYTHONPATH'] = str(Path(__file__).parent.parent)
     
     # Create logs directory if it doesn't exist
@@ -122,6 +123,34 @@ def run_performance_tests(verbose=False):
     return run_command(cmd, "Performance Tests", timeout=600)
 
 
+def run_postgres_tests(verbose=False):
+    """Run PostgreSQL integration tests using testing.postgresql."""
+    cmd = [
+        sys.executable, '-m', 'pytest',
+        'tests/test_postgres_integration.py',
+        '--tb=short',
+        '--timeout=300'
+    ]
+    
+    if verbose:
+        cmd.extend(['-v', '-s'])
+    
+    return run_command(cmd, "PostgreSQL Integration Tests", timeout=300)
+
+
+def run_ci_tests(verbose=False):
+    """Run CI-optimized tests with PostgreSQL database."""
+    cmd = [
+        sys.executable, '-m', 'pytest',
+        'tests/test_api_ci.py',
+        'tests/test_postgres_integration.py::TestCIEnvironment',
+        '--tb=short',
+        '--timeout=300'
+    ]
+    
+    if verbose:
+        cmd.extend(['-v', '-s'])
+    
 def run_coverage_report():
     """Generate coverage report."""
     cmd = [
@@ -171,7 +200,7 @@ def run_security_scan():
     return success
 
 
-def run_all_tests(verbose=False, include_performance=False, include_security=False):
+def run_all_tests(verbose=False, include_performance=False, include_security=False, include_postgres=False):
     """Run all tests in sequence."""
     results = {}
     
@@ -186,10 +215,14 @@ def run_all_tests(verbose=False, include_performance=False, include_security=Fal
     results['unit'] = run_unit_tests(verbose)
     results['integration'] = run_integration_tests(verbose)
     results['api'] = run_api_tests(verbose)
+    results['ci'] = run_ci_tests(verbose)
     
     # Optional tests
     if include_performance:
         results['performance'] = run_performance_tests(verbose)
+    
+    if include_postgres:
+        results['postgres'] = run_postgres_tests(verbose)
     
     if include_security:
         results['linting'] = run_linting()

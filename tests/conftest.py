@@ -22,14 +22,78 @@ from src.models.database import DatabaseManager, ScrapingJob
 from src.ace import ScrapingOrchestrator
 
 
+# PostgreSQL testing with testing.postgresql
+try:
+    import testing.postgresql
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    POSTGRES_TESTING_AVAILABLE = True
+except ImportError:
+    POSTGRES_TESTING_AVAILABLE = False
+
+
+@pytest.fixture(scope="session")
+def postgres_server():
+    """Create a temporary PostgreSQL server for testing."""
+    if not POSTGRES_TESTING_AVAILABLE:
+        pytest.skip("testing.postgresql not available")
+    
+    # Create temporary PostgreSQL server
+    postgres = testing.postgresql.Postgresql()
+    yield postgres
+    # Cleanup happens automatically when the object is destroyed
+
+
+@pytest.fixture(scope="session")  
+def postgres_database_url(postgres_server):
+    """Get database URL from temporary PostgreSQL server."""
+    return postgres_server.url()
+
+
+@pytest.fixture
+def postgres_database_manager(postgres_database_url):
+    """DatabaseManager connected to temporary PostgreSQL."""
+    if not POSTGRES_TESTING_AVAILABLE:
+        pytest.skip("testing.postgresql not available")
+    
+    # Create DatabaseManager with temporary database
+    db_manager = DatabaseManager(database_url=postgres_database_url)
+    
+    yield db_manager
+    
+    # Cleanup - drop all tables
+    try:
+        Base.metadata.drop_all(bind=db_manager.engine)
+    except Exception:
+        pass  # Ignore cleanup errors
+
+
+@pytest.fixture
+def ci_database_manager():
+    """Database manager for CI environment - uses DATABASE_URL."""
+    database_url = os.getenv('DATABASE_URL')
+    if not database_url:
+        pytest.skip("DATABASE_URL not set in CI environment")
+    
+    # Create DatabaseManager with CI database
+    db_manager = DatabaseManager(database_url=database_url)
+    
+    yield db_manager
+    
+    # Cleanup - drop all tables in CI
+    try:
+        Base.metadata.drop_all(bind=db_manager.engine)
+    except Exception:
+        pass  # Ignore cleanup errors in CI
+
+
 @pytest.fixture
 def event_loop():
     """Create an instance of the default event loop for the test session."""
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
-
-
+    
 @pytest.fixture
 def mock_database_manager():
     """Mock DatabaseManager for testing."""
@@ -38,20 +102,6 @@ def mock_database_manager():
     mock_db.update_job_status = Mock()
     mock_db.save_products = Mock()
     mock_db.get_session = Mock()
-    
-    # Mock session and query chain
-    mock_session = Mock()
-    mock_query = Mock()
-    mock_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_query
-    mock_query.order_by.return_value = mock_query
-    mock_query.limit.return_value = mock_query
-    mock_query.all.return_value = []
-    mock_query.first.return_value = None
-    mock_session.close = Mock()
-    mock_db.get_session.return_value = mock_session
-    
-    return mock_db
 
 
 @pytest.fixture
@@ -116,6 +166,71 @@ def sample_products():
     ]
 
 
+    # Mock session and query chain
+    mock_session = Mock()
+    mock_query = Mock()
+    mock_session.query.return_value = mock_query
+    mock_query.filter.return_value = mock_query
+    mock_query.order_by.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.all.return_value = []
+    mock_query.first.return_value = None
+    mock_session.close = Mock()
+    mock_db.get_session.return_value = mock_session
+    
+    return mock_db
+
+
+@pytest.fixture
+def postgres_test_client(postgres_database_manager):
+    """Test client using temporary PostgreSQL database - synchronous fixture."""
+    from starlette.testclient import TestClient
+    from src.api.scraping_api import app
+    
+    # Patch the scraper service to use our test database
+    with patch('src.api.scraping_api.scraper_service') as mock_service:
+        mock_service.db = postgres_database_manager
+        # Mock other service methods to avoid actual scraping
+        mock_service.start_scraping_job = AsyncMock(return_value=TEST_JOB_ID)
+        mock_service.get_job_status = Mock(return_value={
+            "job_id": TEST_JOB_ID,
+            "status": "completed",
+            "current_page": 5,
+            "total_pages": 5,
+            "products_found": 25
+        })
+        mock_service.stop_scraping_job = AsyncMock(return_value=True)
+        mock_service.list_jobs = Mock(return_value=[])
+        
+        client = TestClient(app)
+        yield client
+
+
+@pytest.fixture
+def ci_test_client(ci_database_manager):
+    """Test client for CI environment - synchronous fixture."""
+    from starlette.testclient import TestClient
+    from src.api.scraping_api import app
+    
+    # Patch the scraper service to use our CI database
+    with patch('src.api.scraping_api.scraper_service') as mock_service:
+        mock_service.db = ci_database_manager
+        # Mock other service methods to avoid actual scraping
+        mock_service.start_scraping_job = AsyncMock(return_value=TEST_JOB_ID)
+        mock_service.get_job_status = Mock(return_value={
+            "job_id": TEST_JOB_ID,
+            "status": "completed",
+            "current_page": 5,
+            "total_pages": 5,
+            "products_found": 25
+        })
+        mock_service.stop_scraping_job = AsyncMock(return_value=True)
+        mock_service.list_jobs = Mock(return_value=[])
+        
+        client = TestClient(app)
+        yield client
+
+
 @pytest.fixture
 def scraper_service_with_mocks(mock_database_manager):
     """ScraperService instance with mocked dependencies."""
@@ -124,37 +239,6 @@ def scraper_service_with_mocks(mock_database_manager):
             service = ScraperService()
             service.db = mock_database_manager
             return service
-
-
-@pytest.fixture
-def temp_test_db():
-    """Temporary database for integration testing."""
-    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp_file:
-        db_path = tmp_file.name
-    
-    # Set up test database
-    os.environ['DATABASE_URL'] = f'sqlite:///{db_path}'
-    
-    yield db_path
-    
-    # Cleanup
-    if os.path.exists(db_path):
-        os.unlink(db_path)
-    if 'DATABASE_URL' in os.environ:
-        del os.environ['DATABASE_URL']
-
-
-class AsyncContextManager:
-    """Helper for testing async context managers."""
-    
-    def __init__(self, mock_obj):
-        self.mock_obj = mock_obj
-    
-    async def __aenter__(self):
-        return self.mock_obj
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        pass
 
 
 class MockBrowserPool:

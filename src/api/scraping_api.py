@@ -60,7 +60,15 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid authentication")
 
-scraper_service = ScraperService()
+# Global scraper service instance (lazy initialization)
+scraper_service = None
+
+def get_scraper_service():
+    """Get or initialize the scraper service instance."""
+    global scraper_service
+    if scraper_service is None:
+        scraper_service = ScraperService()
+    return scraper_service
 
 class ScrapingRequest(BaseModel):
     """Request model for starting scraping jobs.
@@ -131,7 +139,7 @@ async def start_scraping(request: ScrapingRequest, user_id: str = Depends(verify
         Job execution is asynchronous and non-blocking.
     """
     try:
-        job_id = await scraper_service.start_scraping_job(
+        job_id = await get_scraper_service().start_scraping_job(
             request.site, 
             request.query, 
             request.get_max_pages_value()
@@ -179,7 +187,7 @@ async def get_job_status(job_id: str, user_id: str = Depends(verify_token)) -> D
     Note:
         Returns real-time progress information for active jobs.
     """
-    status = scraper_service.get_job_status(job_id)
+    status = get_scraper_service().get_job_status(job_id)
     
     if not status:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -211,7 +219,7 @@ async def stop_scraping_job(job_id: str, user_id: str = Depends(verify_token)) -
         Already completed jobs cannot be stopped.
     """
     try:
-        result = await scraper_service.stop_scraping_job(job_id)
+        result = await get_scraper_service().stop_scraping_job(job_id)
         
         if result:
             return {"job_id": job_id, "status": "stopped", "message": "Job stopped successfully"}
@@ -248,7 +256,7 @@ async def list_jobs(user_id: str = Depends(verify_token)) -> Dict[str, Any]:
     Note:
         Returns jobs in reverse chronological order (newest first).
     """
-    jobs = scraper_service.list_jobs()
+    jobs = get_scraper_service().list_jobs()
     return {"jobs": jobs}
 
 

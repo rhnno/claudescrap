@@ -49,7 +49,8 @@ VENV_DIR := venv
 
 # Test environment variables
 export JWT_SECRET_KEY := test-secret-key
-export DATABASE_URL := sqlite:///test.db
+# DATABASE_URL should be set by CI or test fixtures
+# export DATABASE_URL := postgresql://localhost/test_db
 
 # Setup and installation
 install:

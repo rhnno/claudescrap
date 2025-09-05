@@ -10,8 +10,9 @@ pandas==2.1.4
 PyYAML==6.0.1
 pyyaml-include==1.3.1
 
-# Database support (optional)
-pymongo==4.6.0
+# Database support
+psycopg2-binary==2.9.7
+sqlalchemy==2.0.23
 
 # Development and testing
 mypy==1.7.1
