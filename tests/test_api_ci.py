@@ -17,7 +17,13 @@ def test_imports():
     try:
         from starlette.testclient import TestClient
         import jwt
-        from src.api.scraping_api import app
+        
+        # Mock the service getter to avoid database initialization
+        from unittest.mock import patch, Mock
+        with patch('src.api.scraping_api.get_scraper_service') as mock_getter:
+            mock_getter.return_value = Mock()
+            from src.api.scraping_api import app
+            
         assert app is not None
         assert TestClient is not None
         assert jwt is not None
@@ -28,14 +34,16 @@ def test_basic_app_creation():
     """Test basic app instantiation in CI environment."""
     try:
         from starlette.testclient import TestClient
-        from src.api.scraping_api import app
-        
-        # Mock the database manager to avoid PostgreSQL connection issues
         from unittest.mock import patch, Mock
-        mock_service = Mock()
-        mock_service.db = Mock()
         
-        with patch('src.api.scraping_api.scraper_service', mock_service):
+        # Mock the service getter to avoid database initialization
+        with patch('src.api.scraping_api.get_scraper_service') as mock_service_getter:
+            mock_service = Mock()
+            mock_service.db = Mock()
+            mock_service_getter.return_value = mock_service
+            
+            from src.api.scraping_api import app
+            
             client = TestClient(app)
             assert client is not None
             
@@ -71,13 +79,15 @@ def test_ci_environment():
     
     # Test that we can create a TestClient in CI with mocked service
     from starlette.testclient import TestClient
-    from src.api.scraping_api import app
     from unittest.mock import patch, Mock
     
-    mock_service = Mock()
-    mock_service.db = Mock()
-    
-    with patch('src.api.scraping_api.scraper_service', mock_service):
+    with patch('src.api.scraping_api.get_scraper_service') as mock_service_getter:
+        mock_service = Mock()
+        mock_service.db = Mock()
+        mock_service_getter.return_value = mock_service
+        
+        from src.api.scraping_api import app
+        
         client = TestClient(app)
         response = client.get("/health")
         assert response.status_code == 200

@@ -187,8 +187,9 @@ def postgres_test_client(postgres_database_manager):
     from starlette.testclient import TestClient
     from src.api.scraping_api import app
     
-    # Patch the scraper service to use our test database
-    with patch('src.api.scraping_api.scraper_service') as mock_service:
+    # Patch the scraper service getter to use our test database
+    with patch('src.api.scraping_api.get_scraper_service') as mock_service_getter:
+        mock_service = Mock()
         mock_service.db = postgres_database_manager
         # Mock other service methods to avoid actual scraping
         mock_service.start_scraping_job = AsyncMock(return_value=TEST_JOB_ID)
@@ -202,6 +203,8 @@ def postgres_test_client(postgres_database_manager):
         mock_service.stop_scraping_job = AsyncMock(return_value=True)
         mock_service.list_jobs = Mock(return_value=[])
         
+        mock_service_getter.return_value = mock_service
+        
         client = TestClient(app)
         yield client
 
@@ -212,8 +215,9 @@ def ci_test_client(ci_database_manager):
     from starlette.testclient import TestClient
     from src.api.scraping_api import app
     
-    # Patch the scraper service to use our CI database
-    with patch('src.api.scraping_api.scraper_service') as mock_service:
+    # Patch the scraper service getter to use our CI database
+    with patch('src.api.scraping_api.get_scraper_service') as mock_service_getter:
+        mock_service = Mock()
         mock_service.db = ci_database_manager
         # Mock other service methods to avoid actual scraping
         mock_service.start_scraping_job = AsyncMock(return_value=TEST_JOB_ID)
@@ -226,6 +230,8 @@ def ci_test_client(ci_database_manager):
         })
         mock_service.stop_scraping_job = AsyncMock(return_value=True)
         mock_service.list_jobs = Mock(return_value=[])
+        
+        mock_service_getter.return_value = mock_service
         
         client = TestClient(app)
         yield client
