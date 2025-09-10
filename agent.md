@@ -76,14 +76,14 @@ GET  /health                     # Health check
 4. **Multi-site Support**: Tokopedia and Shopee with URL encoding
 5. **Resource Cleanup**: Guaranteed browser cleanup and memory management
 
-### 📋 Phase 2 Preview: API Development
+### 📋 Phase 3 Preview: API Development
 - WebSocket for real-time updates
 - Rate limiting and throttling
 - Advanced authentication (roles, permissions)
 - Metrics and monitoring endpoints
 - Bulk operations support
 
-### 📋 Phase 3 Preview: Dashboard UI
+### 📋 Phase 4 Preview: Dashboard UI
 - React/Vue.js frontend
 - Real-time job monitoring
 - Configuration management UI
