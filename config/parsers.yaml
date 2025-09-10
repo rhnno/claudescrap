@@ -1,8 +1,16 @@
-parsing:
-  tokopedia:
-    product_card: "div.css-5wh65g"
-    title: "span.+tnoqZhn89+NHUA43BpiJg=="
-    price: "div.urMOIDHH7I0Iy1Dv2oFaNw=="
-    shop: "span.si3CNdiG8AR0EaXvf6bFbQ=="
-    rating: "span._2NfJxPu4JC-55aCJ8bEsyw=="
-    review_count: "a[href*="/p/"]"
+base_scraper:
+  products:
+    product_item: ".product-item"
+    product_name: ".product-name"
+    product_price: ".product-price"
+
+tokopedia_base:
+  products:
+    product_selectors:
+      - 'div[class="css-5wh65g"]'
+    name_selectors:
+      - 'span[class="+tnoqZhn89+NHUA43BpiJg=="]'
+    price_selectors:
+      - 'div[class="urMOIDHH7I0Iy1Dv2oFaNw=="]'
+    link_selector: 'a[href*="/p/"]'
+    fallback_link_selector: 'a'
