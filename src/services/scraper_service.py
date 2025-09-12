@@ -51,7 +51,7 @@ class ScraperService:
             'site': site,
             'query': query,
             'max_pages': max_pages,
-            'start_time': datetime.now()
+            'start_time': datetime.timezone.utc()
         }
         
         return job_id
@@ -66,7 +66,7 @@ class ScraperService:
             
             # Initialize ScrapingOrchestrator
             try:
-                orchestrator = ScrapingOrchestrator()
+                orchestrator = ScrapingOrchestrator(main)
                 if not orchestrator.setup_browser(headless=True, use_profile=True):
                     raise Exception("Browser setup failed")
                 logger.info(f"ScrapingOrchestrator initialized successfully for job {job_id}")
@@ -141,7 +141,7 @@ class ScraperService:
             self.db.update_job_status(
                 job_id, 
                 'cancelled', 
-                completed_at=datetime.now(),
+                completed_at=datetime.timezone.utc(),
                 error_message="Job was cancelled by user"
             )
             self.session_stats['failed_jobs'] += 1
