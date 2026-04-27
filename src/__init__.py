@@ -23,8 +23,8 @@ except ImportError:
 
 # Package metadata
 __version__ = "2.0.0"
-__author__ = "Enhanced Analyzer System"
-__description__ = "ML-powered web scraper with configurable pagination detection"
+__author__ = "rhnno"
+__description__ = "web scraper app"
 
 # What gets imported when someone does: from func import *
 __all__ = [

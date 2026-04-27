@@ -4,8 +4,8 @@ import uuid
 import logging
 from datetime import datetime, timezone
 from src.models.database import DatabaseManager, ScrapingJob
-from src.ace import ScrapingOrchestrator, main
-from src.utils.utils import RandomUtils as Utils
+from src.ace import ScrapingOrchestrator
+from utils.utils import RandomUtils as Utils
 import time
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -67,8 +67,8 @@ class ScraperService:
             
             # Initialize ScrapingOrchestrator
             try:
-                orchestrator = ScrapingOrchestrator(main)
-                if not orchestrator.setup_browser(headless=True, use_profile=True):
+                orchestrator = ScrapingOrchestrator()
+                if not orchestrator.setup_browser(self, headless=False, use_profile=True):
                     raise Exception("Browser setup failed")
                 logger.info(f"ScrapingOrchestrator initialized successfully for job {job_id}")
             except Exception as e:
@@ -127,7 +127,7 @@ class ScraperService:
             self.db.update_job_status(
                 job_id, 
                 'completed', 
-                completed_at=self.utcnow(),
+                completed_at=self.utcnow,
                 total_pages=page,
                 products_found=len(all_products)
             )
@@ -142,7 +142,7 @@ class ScraperService:
             self.db.update_job_status(
                 job_id, 
                 'cancelled', 
-                completed_at=self.utcnow(),
+                completed_at=self.utcnow,
                 error_message="Job was cancelled by user"
             )
             self.session_stats['failed_jobs'] += 1
@@ -152,7 +152,7 @@ class ScraperService:
                 job_id, 
                 'failed', 
                 error_message=str(e),
-                completed_at=self.utcnow(),
+                completed_at=self.utcnow,
                 total_pages=page
             )
             self.session_stats['failed_jobs'] += 1
@@ -204,7 +204,7 @@ class ScraperService:
             self.db.update_job_status(
                 job_id, 
                 'stopped', 
-                completed_at=self.utcnow(),
+                completed_at=self.utcnow,
                 error_message="Job stopped by user"
             )
             
