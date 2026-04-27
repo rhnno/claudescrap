@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>src.utils.browser &mdash; ClaudeScrap 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ClaudeScrap
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ClaudeScrap</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">src.utils.browser</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for src.utils.browser</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">selenium</span><span class="w"> </span><span class="kn">import</span> <span class="n">webdriver</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">selenium.webdriver.support.ui</span><span class="w"> </span><span class="kn">import</span> <span class="n">WebDriverWait</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">selenium.webdriver.support</span><span class="w"> </span><span class="kn">import</span> <span class="n">expected_conditions</span> <span class="k">as</span> <span class="n">EC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">selenium.webdriver.common.by</span><span class="w"> </span><span class="kn">import</span> <span class="n">By</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">selenium.webdriver.chrome.service</span><span class="w"> </span><span class="kn">import</span> <span class="n">Service</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">selenium.common.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">TimeoutException</span><span class="p">,</span> <span class="n">NoSuchElementException</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
+
+<div class="viewcode-block" id="BrowserManager">
+<a class="viewcode-back" href="../../../modules.html#src.utils.browser.BrowserManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BrowserManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handles all browser-related operations with persistent profile support.</span>
+<span class="sd">    </span>
+<span class="sd">    This class manages Chrome browser instances with advanced anti-detection features,</span>
+<span class="sd">    persistent profile management, and automated login capabilities for e-commerce sites.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        driver (Optional[webdriver.Chrome]): Chrome WebDriver instance</span>
+<span class="sd">        wait (Optional[WebDriverWait]): WebDriver wait instance for element waiting</span>
+<span class="sd">        use_profile (bool): Whether to use persistent Chrome profile</span>
+<span class="sd">        profile_name (str): Name of the Chrome profile to use</span>
+<span class="sd">        headless (bool): Whether to run browser in headless mode</span>
+<span class="sd">        profile_path (Path): Path to Chrome profile directory</span>
+<span class="sd">        credentials_file (str): Path to login credentials JSON file</span>
+<span class="sd">    </span>
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; browser = BrowserManager(use_profile=True, headless=False)</span>
+<span class="sd">        &gt;&gt;&gt; browser.setup_driver()</span>
+<span class="sd">        &gt;&gt;&gt; browser.navigate_to(&quot;https://tokopedia.com&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; browser.auto_login(&quot;tokopedia&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; browser.close()</span>
+<span class="sd">    </span>
+<span class="sd">    Note:</span>
+<span class="sd">        Implements multiple anti-detection techniques and supports persistent</span>
+<span class="sd">        sessions across browser restarts through profile management.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="BrowserManager.__init__">
+<a class="viewcode-back" href="../../../modules.html#src.utils.browser.BrowserManager.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">use_profile</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">profile_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;research_profile&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize BrowserManager with configuration options.</span>
+<span class="sd">        </span>
+<span class="sd">        Sets up the browser manager with specified profile and display settings.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            use_profile (bool, optional): Enable persistent Chrome profile. Defaults to True.</span>
+<span class="sd">            profile_name (str, optional): Name of Chrome profile. Defaults to &quot;research_profile&quot;.</span>
+<span class="sd">            headless (bool, optional): Run browser in headless mode. Defaults to False.</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Creates profile directory if it doesn&#39;t exist and sets up credentials file path.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">webdriver</span><span class="o">.</span><span class="n">Chrome</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">WebDriverWait</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_profile</span> <span class="o">=</span> <span class="n">use_profile</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">profile_name</span> <span class="o">=</span> <span class="n">profile_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headless</span> <span class="o">=</span> <span class="n">headless</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">profile_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_profile_path</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">credentials_file</span> <span class="o">=</span> <span class="s2">&quot;config/login_credentials.json&quot;</span></div>
+
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_profile_path</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the path for Chrome profile directory.</span>
+<span class="sd">        </span>
+<span class="sd">        Creates and returns the path to the Chrome profile directory,</span>
+<span class="sd">        ensuring the directory exists.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Path: Path object pointing to the profile directory</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Creates chrome_profiles directory if it doesn&#39;t exist.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">profile_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;chrome_profiles&quot;</span><span class="p">)</span>
+        <span class="n">profile_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">profile_dir</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile_name</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_credentials</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load login credentials from config file&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">credentials_file</span><span class="p">):</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">credentials_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Create default credentials file</span>
+                <span class="n">default_creds</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;tokopedia&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;login_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://accounts.tokopedia.com/otp/c/page?otp_type=116&amp;msisdn=&amp;ld=https%3A</span><span class="si">%2F%2F</span><span class="s2">www.tokopedia.com</span><span class="si">%2F</span><span class="s2">&quot;</span>
+                    <span class="p">},</span>
+                    <span class="s2">&quot;shopee&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;login_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://shopee.co.id/buyer/login&quot;</span>
+                    <span class="p">},</span>
+                    <span class="s2">&quot;bukalapak&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;email&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;login_url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://accounts.bukalapak.com/login&quot;</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">credentials_file</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">credentials_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">default_creds</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📝 Created credentials template at </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">credentials_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🔑 Please fill in your login credentials before using auto-login&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">default_creds</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Error loading credentials: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="BrowserManager.setup_driver">
+<a class="viewcode-back" href="../../../modules.html#src.utils.browser.BrowserManager.setup_driver">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_driver</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">webdriver</span><span class="o">.</span><span class="n">Chrome</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Setup Chrome driver with persistent profile and anti-detection options.</span>
+<span class="sd">        </span>
+<span class="sd">        Initializes Chrome WebDriver with comprehensive anti-detection measures,</span>
+<span class="sd">        performance optimizations, and persistent profile support.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Optional[webdriver.Chrome]: Configured Chrome WebDriver instance or None if failed</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: Various WebDriver initialization errors</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; browser = BrowserManager()</span>
+<span class="sd">            &gt;&gt;&gt; driver = browser.setup_driver()</span>
+<span class="sd">            &gt;&gt;&gt; if driver:</span>
+<span class="sd">            ...     print(&quot;Browser ready for scraping&quot;)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Implements multiple anti-detection techniques including:</span>
+<span class="sd">            - User agent rotation</span>
+<span class="sd">            - WebDriver property masking</span>
+<span class="sd">            - Automation extension disabling</span>
+<span class="sd">            - Memory and performance optimizations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">options</span> <span class="o">=</span> <span class="n">webdriver</span><span class="o">.</span><span class="n">ChromeOptions</span><span class="p">()</span>
+        
+        <span class="c1"># Headless mode if requested</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">headless</span><span class="p">:</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--headless&#39;</span><span class="p">)</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--disable-gpu&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🔧 Running in headless mode&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Anti-detection options</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--disable-blink-features=AutomationControlled&#39;</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_experimental_option</span><span class="p">(</span><span class="s2">&quot;excludeSwitches&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;enable-automation&quot;</span><span class="p">])</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_experimental_option</span><span class="p">(</span><span class="s1">&#39;useAutomationExtension&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        
+        <span class="c1"># Profile setup</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_profile</span><span class="p">:</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--user-data-dir=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">profile_path</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--profile-directory=Default&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔧 Using Chrome profile: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">profile_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Browser optimization flags for faster startup (from memory requirements)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--no-first-run&#39;</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--no-default-browser-check&#39;</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--disable-default-apps&#39;</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--disable-extensions&#39;</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--disable-plugins&#39;</span><span class="p">)</span>
+        
+        <span class="c1"># Enhanced stealth options</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--disable-dev-shm-usage&#39;</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--no-sandbox&#39;</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--disable-gpu&#39;</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--remote-debugging-port=9222&quot;</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--remote-debugging-address=0.0.0.0&quot;</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--disable-images&#39;</span><span class="p">)</span>  <span class="c1"># Faster loading</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--disable-javascript&#39;</span><span class="p">)</span>  <span class="c1"># Can be removed if JS is needed</span>
+        
+        <span class="c1"># Rotate user agents for better stealth</span>
+        <span class="n">user_agents</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36&#39;</span>
+        <span class="p">]</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+        <span class="n">selected_ua</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">user_agents</span><span class="p">)</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;--user-agent=</span><span class="si">{</span><span class="n">selected_ua</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        
+        <span class="c1"># Additional preferences</span>
+        <span class="n">prefs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;profile.default_content_setting_values&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;notifications&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>  <span class="c1"># Block notifications</span>
+                <span class="s2">&quot;geolocation&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>    <span class="c1"># Block location requests</span>
+                <span class="s2">&quot;media_stream&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>   <span class="c1"># Block camera/mic</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;profile.managed_default_content_settings&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;images&quot;</span><span class="p">:</span> <span class="mi">2</span>  <span class="c1"># Block images for faster loading</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="n">options</span><span class="o">.</span><span class="n">add_experimental_option</span><span class="p">(</span><span class="s2">&quot;prefs&quot;</span><span class="p">,</span> <span class="n">prefs</span><span class="p">)</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">driver</span> <span class="o">=</span> <span class="n">webdriver</span><span class="o">.</span><span class="n">Chrome</span><span class="p">(</span><span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
+            
+            <span class="c1"># Execute stealth scripts</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">execute_script</span><span class="p">(</span><span class="s2">&quot;Object.defineProperty(navigator, &#39;webdriver&#39;, {get: () =&gt; undefined})&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">execute_script</span><span class="p">(</span><span class="s2">&quot;Object.defineProperty(navigator, &#39;plugins&#39;, {get: () =&gt; [1, 2, 3, 4, 5]})&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">execute_script</span><span class="p">(</span><span class="s2">&quot;Object.defineProperty(navigator, &#39;languages&#39;, {get: () =&gt; [&#39;en-US&#39;, &#39;en&#39;]})&quot;</span><span class="p">)</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span> <span class="o">=</span> <span class="n">WebDriverWait</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Chrome driver setup successfully with research profile&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span>
+            
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Error setting up Chrome driver: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span></div>
+
+    
+<div class="viewcode-block" id="BrowserManager.navigate_to">
+<a class="viewcode-back" href="../../../modules.html#src.utils.browser.BrowserManager.navigate_to">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">navigate_to</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Navigate to a URL and wait for page load.</span>
+<span class="sd">        </span>
+<span class="sd">        Navigates the browser to the specified URL and waits for the page</span>
+<span class="sd">        to fully load before returning.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            url (str): Target URL to navigate to</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if navigation successful, False otherwise</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; success = browser.navigate_to(&quot;https://tokopedia.com&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; if success:</span>
+<span class="sd">            ...     print(&quot;Page loaded successfully&quot;)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Includes automatic page load waiting with timeout handling.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ Driver not initialized&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait_for_page_load</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="BrowserManager.wait_for_page_load">
+<a class="viewcode-back" href="../../../modules.html#src.utils.browser.BrowserManager.wait_for_page_load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wait_for_page_load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Wait for page to fully load with reduced timing&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ WebDriverWait not initialized&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="o">.</span><span class="n">until</span><span class="p">(</span><span class="n">EC</span><span class="o">.</span><span class="n">presence_of_element_located</span><span class="p">((</span><span class="n">By</span><span class="o">.</span><span class="n">TAG_NAME</span><span class="p">,</span> <span class="s2">&quot;body&quot;</span><span class="p">)))</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># Reduced wait for dynamic content</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ Page load timeout&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+    
+<div class="viewcode-block" id="BrowserManager.auto_login">
+<a class="viewcode-back" href="../../../modules.html#src.utils.browser.BrowserManager.auto_login">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">auto_login</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Automatically login to specified site using saved credentials.</span>
+<span class="sd">        </span>
+<span class="sd">        Performs automated login using credentials stored in the configuration file.</span>
+<span class="sd">        Supports tokopedia, shopee, and bukalapak with site-specific login flows.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            site_name (str): Name of the site to login to (&#39;tokopedia&#39;, &#39;shopee&#39;, &#39;bukalapak&#39;)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if login successful, False otherwise</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            Exception: Various login-related errors including missing credentials</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; if browser.auto_login(&quot;tokopedia&quot;):</span>
+<span class="sd">            ...     print(&quot;Successfully logged in to Tokopedia&quot;)</span>
+<span class="sd">            ... else:</span>
+<span class="sd">            ...     print(&quot;Login failed&quot;)</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Requires valid credentials in config/login_credentials.json.</span>
+<span class="sd">            Creates template file if it doesn&#39;t exist.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ Browser not properly initialized&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="n">credentials</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_credentials</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">site_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">credentials</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ No credentials found for </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        
+        <span class="n">site_creds</span> <span class="o">=</span> <span class="n">credentials</span><span class="p">[</span><span class="n">site_name</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">site_creds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;email&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">site_creds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;password&#39;</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Empty credentials for </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">. Please update </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">credentials_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔐 Attempting auto-login to </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">navigate_to</span><span class="p">(</span><span class="n">site_creds</span><span class="p">[</span><span class="s1">&#39;login_url&#39;</span><span class="p">])</span>
+            
+            <span class="k">if</span> <span class="n">site_name</span> <span class="o">==</span> <span class="s1">&#39;tokopedia&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_login_tokopedia</span><span class="p">(</span><span class="n">site_creds</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">site_name</span> <span class="o">==</span> <span class="s1">&#39;shopee&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_login_shopee</span><span class="p">(</span><span class="n">site_creds</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">site_name</span> <span class="o">==</span> <span class="s1">&#39;bukalapak&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_login_bukalapak</span><span class="p">(</span><span class="n">site_creds</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Auto-login not implemented for </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+                
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Auto-login failed for </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_login_tokopedia</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">creds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Login to Tokopedia&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ Browser not properly initialized&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Wait for email input</span>
+            <span class="n">email_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="o">.</span><span class="n">until</span><span class="p">(</span>
+                <span class="n">EC</span><span class="o">.</span><span class="n">presence_of_element_located</span><span class="p">((</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;input[type=&#39;email&#39;], input[name=&#39;email&#39;], input[placeholder*=&#39;email&#39;]&quot;</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="n">email_input</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">email_input</span><span class="o">.</span><span class="n">send_keys</span><span class="p">(</span><span class="n">creds</span><span class="p">[</span><span class="s1">&#39;email&#39;</span><span class="p">])</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            
+            <span class="c1"># Find and click continue/next button</span>
+            <span class="n">continue_btn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;button[type=&#39;submit&#39;], button[data-testid*=&#39;submit&#39;], .btn-primary&quot;</span><span class="p">)</span>
+            <span class="n">continue_btn</span><span class="o">.</span><span class="n">click</span><span class="p">()</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            
+            <span class="c1"># Wait for password input</span>
+            <span class="n">password_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="o">.</span><span class="n">until</span><span class="p">(</span>
+                <span class="n">EC</span><span class="o">.</span><span class="n">presence_of_element_located</span><span class="p">((</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;input[type=&#39;password&#39;], input[name=&#39;password&#39;]&quot;</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="n">password_input</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">password_input</span><span class="o">.</span><span class="n">send_keys</span><span class="p">(</span><span class="n">creds</span><span class="p">[</span><span class="s1">&#39;password&#39;</span><span class="p">])</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            
+            <span class="c1"># Submit login</span>
+            <span class="n">login_btn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;button[type=&#39;submit&#39;], button[data-testid*=&#39;submit&#39;], .btn-primary&quot;</span><span class="p">)</span>
+            <span class="n">login_btn</span><span class="o">.</span><span class="n">click</span><span class="p">()</span>
+            
+            <span class="c1"># Wait for login success (check for profile or dashboard elements)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="o">.</span><span class="n">until</span><span class="p">(</span>
+                <span class="n">EC</span><span class="o">.</span><span class="n">any_of</span><span class="p">(</span>
+                    <span class="n">EC</span><span class="o">.</span><span class="n">presence_of_element_located</span><span class="p">((</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;[data-testid*=&#39;profile&#39;], .user-menu, .account-menu&quot;</span><span class="p">)),</span>
+                    <span class="n">EC</span><span class="o">.</span><span class="n">url_contains</span><span class="p">(</span><span class="s2">&quot;tokopedia.com&quot;</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Tokopedia login successful&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+            
+        <span class="k">except</span> <span class="n">TimeoutException</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ Tokopedia login timeout - may need manual intervention&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Tokopedia login error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_login_shopee</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">creds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Login to Shopee&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ Browser not properly initialized&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Wait for email/phone input</span>
+            <span class="n">email_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="o">.</span><span class="n">until</span><span class="p">(</span>
+                <span class="n">EC</span><span class="o">.</span><span class="n">presence_of_element_located</span><span class="p">((</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;input[name=&#39;loginKey&#39;], input[placeholder*=&#39;email&#39;], input[placeholder*=&#39;phone&#39;]&quot;</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="n">email_input</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">email_input</span><span class="o">.</span><span class="n">send_keys</span><span class="p">(</span><span class="n">creds</span><span class="p">[</span><span class="s1">&#39;email&#39;</span><span class="p">])</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            
+            <span class="c1"># Password input</span>
+            <span class="n">password_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;input[name=&#39;password&#39;], input[type=&#39;password&#39;]&quot;</span><span class="p">)</span>
+            <span class="n">password_input</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">password_input</span><span class="o">.</span><span class="n">send_keys</span><span class="p">(</span><span class="n">creds</span><span class="p">[</span><span class="s1">&#39;password&#39;</span><span class="p">])</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            
+            <span class="c1"># Submit login</span>
+            <span class="n">login_btn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;button[type=&#39;submit&#39;], .btn-solid-primary&quot;</span><span class="p">)</span>
+            <span class="n">login_btn</span><span class="o">.</span><span class="n">click</span><span class="p">()</span>
+            
+            <span class="c1"># Wait for login success</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="o">.</span><span class="n">until</span><span class="p">(</span>
+                <span class="n">EC</span><span class="o">.</span><span class="n">any_of</span><span class="p">(</span>
+                    <span class="n">EC</span><span class="o">.</span><span class="n">presence_of_element_located</span><span class="p">((</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;.navbar__username, .user-info&quot;</span><span class="p">)),</span>
+                    <span class="n">EC</span><span class="o">.</span><span class="n">url_contains</span><span class="p">(</span><span class="s2">&quot;shopee.co.id&quot;</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Shopee login successful&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+            
+        <span class="k">except</span> <span class="n">TimeoutException</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ Shopee login timeout - may need manual intervention&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Shopee login error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">_login_bukalapak</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">creds</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Login to Bukalapak&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ Browser not properly initialized&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Wait for email input</span>
+            <span class="n">email_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="o">.</span><span class="n">until</span><span class="p">(</span>
+                <span class="n">EC</span><span class="o">.</span><span class="n">presence_of_element_located</span><span class="p">((</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;input[name=&#39;user[email]&#39;], input[type=&#39;email&#39;]&quot;</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="n">email_input</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">email_input</span><span class="o">.</span><span class="n">send_keys</span><span class="p">(</span><span class="n">creds</span><span class="p">[</span><span class="s1">&#39;email&#39;</span><span class="p">])</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            
+            <span class="c1"># Password input</span>
+            <span class="n">password_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;input[name=&#39;user[password]&#39;], input[type=&#39;password&#39;]&quot;</span><span class="p">)</span>
+            <span class="n">password_input</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">password_input</span><span class="o">.</span><span class="n">send_keys</span><span class="p">(</span><span class="n">creds</span><span class="p">[</span><span class="s1">&#39;password&#39;</span><span class="p">])</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            
+            <span class="c1"># Submit login</span>
+            <span class="n">login_btn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">find_element</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;input[type=&#39;submit&#39;], button[type=&#39;submit&#39;]&quot;</span><span class="p">)</span>
+            <span class="n">login_btn</span><span class="o">.</span><span class="n">click</span><span class="p">()</span>
+            
+            <span class="c1"># Wait for login success</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="o">.</span><span class="n">until</span><span class="p">(</span>
+                <span class="n">EC</span><span class="o">.</span><span class="n">any_of</span><span class="p">(</span>
+                    <span class="n">EC</span><span class="o">.</span><span class="n">presence_of_element_located</span><span class="p">((</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="s2">&quot;.user-menu, .account-dropdown&quot;</span><span class="p">)),</span>
+                    <span class="n">EC</span><span class="o">.</span><span class="n">url_contains</span><span class="p">(</span><span class="s2">&quot;bukalapak.com&quot;</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Bukalapak login successful&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+            
+        <span class="k">except</span> <span class="n">TimeoutException</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ Bukalapak login timeout - may need manual intervention&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Bukalapak login error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    
+<div class="viewcode-block" id="BrowserManager.check_login_status">
+<a class="viewcode-back" href="../../../modules.html#src.utils.browser.BrowserManager.check_login_status">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_login_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if already logged in to a site&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;❌ Driver not initialized&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">site_name</span> <span class="o">==</span> <span class="s1">&#39;tokopedia&#39;</span><span class="p">:</span>
+                <span class="c1"># Check for Tokopedia login indicators</span>
+                <span class="n">login_indicators</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="s2">&quot;[data-testid*=&#39;profile&#39;]&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;.user-menu&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;.account-menu&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;[data-testid*=&#39;user-menu&#39;]&quot;</span>
+                <span class="p">]</span>
+            <span class="k">elif</span> <span class="n">site_name</span> <span class="o">==</span> <span class="s1">&#39;shopee&#39;</span><span class="p">:</span>
+                <span class="c1"># Check for Shopee login indicators</span>
+                <span class="n">login_indicators</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="s2">&quot;.navbar__username&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;.user-info&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;.shopee-avatar&quot;</span>
+                <span class="p">]</span>
+            <span class="k">elif</span> <span class="n">site_name</span> <span class="o">==</span> <span class="s1">&#39;bukalapak&#39;</span><span class="p">:</span>
+                <span class="c1"># Check for Bukalapak login indicators</span>
+                <span class="n">login_indicators</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="s2">&quot;.user-menu&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;.account-dropdown&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;.user-avatar&quot;</span>
+                <span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            
+            <span class="k">for</span> <span class="n">indicator</span> <span class="ow">in</span> <span class="n">login_indicators</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">elements</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">find_elements</span><span class="p">(</span><span class="n">By</span><span class="o">.</span><span class="n">CSS_SELECTOR</span><span class="p">,</span> <span class="n">indicator</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">elements</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">is_displayed</span><span class="p">()</span> <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">):</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Already logged in to </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">return</span> <span class="kc">True</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">continue</span>
+            
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Not logged in to </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+            
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️ Error checking login status for </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+    
+<div class="viewcode-block" id="BrowserManager.ensure_login">
+<a class="viewcode-back" href="../../../modules.html#src.utils.browser.BrowserManager.ensure_login">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ensure_login</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Ensure user is logged in to the specified site&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_login_status</span><span class="p">(</span><span class="n">site_name</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔐 Need to login to </span><span class="si">{</span><span class="n">site_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_login</span><span class="p">(</span><span class="n">site_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+    
+<div class="viewcode-block" id="BrowserManager.close">
+<a class="viewcode-back" href="../../../modules.html#src.utils.browser.BrowserManager.close">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close the browser and save profile data.</span>
+<span class="sd">        </span>
+<span class="sd">        Properly closes the Chrome browser instance and saves any profile</span>
+<span class="sd">        data for future sessions.</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; browser.close()</span>
+<span class="sd">            🔧 Closing browser and saving profile...</span>
+<span class="sd">        </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Should always be called when finished with the browser to</span>
+<span class="sd">            prevent resource leaks and save session data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🔧 Closing browser and saving profile...&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">quit</span><span class="p">()</span></div>
+</div>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ClaudeScrap Project.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

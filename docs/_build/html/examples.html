@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Examples &mdash; ClaudeScrap 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=8d563738"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="API Reference" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ClaudeScrap
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">API Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-scraping-example">Basic Scraping Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api-usage-example">API Usage Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#browser-management-example">Browser Management Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#data-processing-example">Data Processing Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#database-integration-example">Database Integration Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-examples">Configuration Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#error-handling-example">Error Handling Example</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ClaudeScrap</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Examples</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/examples.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h1>
+<p>This section provides practical examples of using ClaudeScrap for various scraping scenarios.</p>
+<section id="basic-scraping-example">
+<h2>Basic Scraping Example<a class="headerlink" href="#basic-scraping-example" title="Link to this heading"></a></h2>
+<p>Simple product scraping from Tokopedia:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">src.ace</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScrapingOrchestrator</span>
+
+<span class="c1"># Initialize orchestrator</span>
+<span class="n">orchestrator</span> <span class="o">=</span> <span class="n">ScrapingOrchestrator</span><span class="p">()</span>
+<span class="n">orchestrator</span><span class="o">.</span><span class="n">setup_browser</span><span class="p">(</span><span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_profile</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Configure scraping</span>
+<span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;sites&quot;</span><span class="p">:</span> <span class="p">[{</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;tokopedia&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;queries&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;laptop gaming&quot;</span><span class="p">,</span> <span class="s2">&quot;smartphone android&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;max_pages&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="s2">&quot;scroll_depth&quot;</span><span class="p">:</span> <span class="mi">3</span>
+    <span class="p">}],</span>
+    <span class="s2">&quot;output_format&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span> <span class="s2">&quot;excel&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;delay_range&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="c1"># Run scraping</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">run_batch_scraping</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scraping completed! Found data for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2"> sites&quot;</span><span class="p">)</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">orchestrator</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="api-usage-example">
+<h2>API Usage Example<a class="headerlink" href="#api-usage-example" title="Link to this heading"></a></h2>
+<p>Using the REST API for remote scraping:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.services.scraper_service</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScraperService</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">api_scraping_example</span><span class="p">():</span>
+    <span class="n">service</span> <span class="o">=</span> <span class="n">ScraperService</span><span class="p">()</span>
+
+    <span class="c1"># Start scraping job</span>
+    <span class="n">job_id</span> <span class="o">=</span> <span class="k">await</span> <span class="n">service</span><span class="o">.</span><span class="n">start_scraping_job</span><span class="p">(</span>
+        <span class="n">site</span><span class="o">=</span><span class="s1">&#39;tokopedia&#39;</span><span class="p">,</span>
+        <span class="n">query</span><span class="o">=</span><span class="s1">&#39;gaming laptop RTX 4060&#39;</span><span class="p">,</span>
+        <span class="n">max_pages</span><span class="o">=</span><span class="mi">5</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Started job: </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Monitor job progress</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">get_job_status</span><span class="p">(</span><span class="n">job_id</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Job </span><span class="si">{</span><span class="n">job_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">status</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> - Page </span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;current_page&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">status</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;completed&#39;</span><span class="p">,</span> <span class="s1">&#39;failed&#39;</span><span class="p">]:</span>
+            <span class="k">break</span>
+
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+
+    <span class="c1"># Get final results</span>
+    <span class="n">final_status</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">get_job_status</span><span class="p">(</span><span class="n">job_id</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final results: </span><span class="si">{</span><span class="n">final_status</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;products_found&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2"> products found&quot;</span><span class="p">)</span>
+
+<span class="c1"># Run the example</span>
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">api_scraping_example</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="browser-management-example">
+<h2>Browser Management Example<a class="headerlink" href="#browser-management-example" title="Link to this heading"></a></h2>
+<p>Advanced browser configuration with auto-login:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">src.utils.browser</span><span class="w"> </span><span class="kn">import</span> <span class="n">BrowserManager</span>
+
+<span class="c1"># Initialize browser with custom settings</span>
+<span class="n">browser</span> <span class="o">=</span> <span class="n">BrowserManager</span><span class="p">(</span>
+    <span class="n">use_profile</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">profile_name</span><span class="o">=</span><span class="s2">&quot;my_scraping_profile&quot;</span><span class="p">,</span>
+    <span class="n">headless</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="c1"># Setup browser with anti-detection</span>
+    <span class="n">driver</span> <span class="o">=</span> <span class="n">browser</span><span class="o">.</span><span class="n">setup_driver</span><span class="p">()</span>
+
+    <span class="c1"># Auto-login to site (requires credentials in config)</span>
+    <span class="k">if</span> <span class="n">browser</span><span class="o">.</span><span class="n">auto_login</span><span class="p">(</span><span class="s2">&quot;tokopedia&quot;</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Successfully logged in!&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Navigate and scrape</span>
+        <span class="n">browser</span><span class="o">.</span><span class="n">navigate_to</span><span class="p">(</span><span class="s2">&quot;https://www.tokopedia.com/search?q=laptop&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Your scraping logic here</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Login failed, continuing without authentication&quot;</span><span class="p">)</span>
+
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">browser</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="data-processing-example">
+<h2>Data Processing Example<a class="headerlink" href="#data-processing-example" title="Link to this heading"></a></h2>
+<p>Processing scraped data with built-in utilities:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">src.utils.parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProductParser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.utils.storage</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataStorage</span>
+
+<span class="c1"># Parse HTML files</span>
+<span class="n">parser</span> <span class="o">=</span> <span class="n">ProductParser</span><span class="p">()</span>
+<span class="n">products</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_all_files</span><span class="p">(</span><span class="s2">&quot;data/raw_html&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parsed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">products</span><span class="p">)</span><span class="si">}</span><span class="s2"> products&quot;</span><span class="p">)</span>
+
+<span class="c1"># Save to multiple formats</span>
+<span class="n">storage</span> <span class="o">=</span> <span class="n">DataStorage</span><span class="p">()</span>
+
+<span class="c1"># Save to CSV</span>
+<span class="n">csv_path</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">save_to_csv</span><span class="p">(</span><span class="n">products</span><span class="p">,</span> <span class="s2">&quot;gaming_laptops&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CSV saved: </span><span class="si">{</span><span class="n">csv_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Process individual products</span>
+<span class="k">for</span> <span class="n">product</span> <span class="ow">in</span> <span class="n">products</span><span class="p">[:</span><span class="mi">5</span><span class="p">]:</span>  <span class="c1"># First 5 products</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Product: </span><span class="si">{</span><span class="n">product</span><span class="p">[</span><span class="s1">&#39;Product Title&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Price: </span><span class="si">{</span><span class="n">product</span><span class="p">[</span><span class="s1">&#39;Price&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shop: </span><span class="si">{</span><span class="n">product</span><span class="p">[</span><span class="s1">&#39;Shop Name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="database-integration-example">
+<h2>Database Integration Example<a class="headerlink" href="#database-integration-example" title="Link to this heading"></a></h2>
+<p>Using the database for persistent storage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">src.models.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseManager</span>
+
+<span class="c1"># Initialize database</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">DatabaseManager</span><span class="p">()</span>
+
+<span class="c1"># Create a job</span>
+<span class="n">job</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">create_job</span><span class="p">(</span><span class="s2">&quot;my-job-123&quot;</span><span class="p">,</span> <span class="s2">&quot;tokopedia&quot;</span><span class="p">,</span> <span class="s2">&quot;gaming laptop&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created job: </span><span class="si">{</span><span class="n">job</span><span class="o">.</span><span class="n">job_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Update job status</span>
+<span class="n">db</span><span class="o">.</span><span class="n">update_job_status</span><span class="p">(</span><span class="s2">&quot;my-job-123&quot;</span><span class="p">,</span> <span class="s2">&quot;running&quot;</span><span class="p">,</span> <span class="n">current_page</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">total_pages</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+<span class="c1"># Save products</span>
+<span class="n">products_data</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Gaming Laptop ASUS ROG&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="s2">&quot;Rp 15.000.000&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;https://tokopedia.com/product/123&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;site&quot;</span><span class="p">:</span> <span class="s2">&quot;tokopedia&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;gaming laptop&quot;</span>
+    <span class="p">}</span>
+<span class="p">]</span>
+
+<span class="n">db</span><span class="o">.</span><span class="n">save_products</span><span class="p">(</span><span class="n">products_data</span><span class="p">,</span> <span class="s2">&quot;my-job-123&quot;</span><span class="p">)</span>
+
+<span class="c1"># Complete job</span>
+<span class="n">db</span><span class="o">.</span><span class="n">update_job_status</span><span class="p">(</span><span class="s2">&quot;my-job-123&quot;</span><span class="p">,</span> <span class="s2">&quot;completed&quot;</span><span class="p">,</span> <span class="n">products_found</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">products_data</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+<section id="configuration-examples">
+<h2>Configuration Examples<a class="headerlink" href="#configuration-examples" title="Link to this heading"></a></h2>
+<p>Custom scraping configuration:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;sites&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tokopedia&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;queries&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">                </span><span class="s2">&quot;laptop gaming RTX 4060&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="s2">&quot;smartphone android flagship&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="s2">&quot;headphone wireless noise cancelling&quot;</span>
+<span class="w">            </span><span class="p">],</span>
+<span class="w">            </span><span class="nt">&quot;max_pages&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;scroll_depth&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;shopee&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;queries&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;laptop murah&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;hp android&quot;</span><span class="p">],</span>
+<span class="w">            </span><span class="nt">&quot;max_pages&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;scroll_depth&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;output_format&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;csv&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;excel&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;json&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;delay_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="error-handling-example">
+<h2>Error Handling Example<a class="headerlink" href="#error-handling-example" title="Link to this heading"></a></h2>
+<p>Robust error handling for production use:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">src.ace</span><span class="w"> </span><span class="kn">import</span> <span class="n">ScrapingOrchestrator</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="c1"># Setup logging</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">robust_scraping</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="n">orchestrator</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">orchestrator</span> <span class="o">=</span> <span class="n">ScrapingOrchestrator</span><span class="p">()</span>
+
+        <span class="c1"># Setup browser with retry logic</span>
+        <span class="n">max_retries</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">setup_browser</span><span class="p">(</span><span class="n">headless</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Browser setup successful&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Browser setup attempt </span><span class="si">{</span><span class="n">attempt</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">attempt</span> <span class="o">==</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Failed to setup browser after all retries&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Run scraping with error handling</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">orchestrator</span><span class="o">.</span><span class="n">run_batch_scraping</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scraping completed successfully: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2"> sites processed&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">results</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No results obtained from scraping&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scraping failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">orchestrator</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">orchestrator</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Browser closed successfully&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error closing browser: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Usage</span>
+<span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;sites&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;tokopedia&quot;</span><span class="p">,</span> <span class="s2">&quot;queries&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;laptop&quot;</span><span class="p">]}],</span>
+    <span class="s2">&quot;output_format&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;csv&quot;</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="n">results</span> <span class="o">=</span> <span class="n">robust_scraping</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, ClaudeScrap Project.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
