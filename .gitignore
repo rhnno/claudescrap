@@ -61,4 +61,4 @@ temp_*
 data/raw/reviews.csv
 acli.exe
 *.db
-chrome_profiles/
+chrome_profiles/research_profile/
