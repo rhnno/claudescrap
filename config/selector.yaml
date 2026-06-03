@@ -1,0 +1,155 @@
+pipeline_name: "tokopedia_bronze_to_silver"
+source_layer: "bronze"
+target_layer: "silver"
+container_field: "raw_cards"
+
+# ====================================================================
+# 1. HTML EXTRACTIONS
+# Semua selector diverifikasi dari raw HTML aktual
+# Menggunakan structural selector sebagai primary karena class obfuscated
+# ====================================================================
+html_extractions:
+
+  product_name:
+    # Class "+tnoqZhn89+NHUA43BpiJg==" konsisten di semua 3 data
+    # Pakai contains karena class bisa punya suffix berbeda
+    css: "span[class*='+tnoqZhn89']"
+    fallback_css: "img[alt='product-image']"
+    attribute: "text"
+    fallback_attribute: "alt"
+    type: "string"
+
+  price_raw:
+    # Class "urMOIDHH7I0Iy1Dv2oFaNw==" konsisten di semua 3 data
+    # Data 2 punya class tambahan "HJhoi0tEIlowsgSNDNWVXg==" tapi prefix sama
+    css: "div[class*='urMOIDHH']"
+    attribute: "text"
+    type: "string"
+
+  original_price_raw:
+    # Hanya ada di data 2 (produk dengan diskon)
+    # Class "hC1B8wTAoPszbEZj80w6Qw=="
+    css: "span[class*='hC1B8wTA']"
+    attribute: "text"
+    type: "string"
+    default_value: null
+
+  discount_label:
+    # Hanya ada di data 2
+    # Class "_7UCYdN8MrOTwg0MKcGu8zg=="
+    css: "span[class*='_7UCYdN8M']"
+    attribute: "text"
+    type: "string"
+    default_value: null
+
+  image_url:
+    # alt="product-image" konsisten dan tidak obfuscated — paling stable
+    css: "img[alt='product-image']"
+    attribute: "src"
+    type: "string"
+
+  rating:
+    # Class "_2NfJxPu4JC-55aCJ8bEsyw==" konsisten di data 1 dan 2
+    # Data 3 tidak punya rating — default 0.0
+    # img[alt='rating'] sebagai anchor lebih stable dari class
+    css: "span[class*='_2NfJxPu4']"
+    fallback_css: "img[alt='rating'] + span"
+    attribute: "text"
+    type: "float"
+    default_value: null
+
+  items_sold_raw:
+    # Class "u6SfjDD2WiBlNW7zHmzRhQ==" konsisten di semua 3 data
+    # Data 3: "4 terjual" (tanpa +), data 1: "500+ terjual"
+    css: "span[class*='u6SfjDD2']"
+    attribute: "text"
+    type: "string"
+    default_value: null
+
+  shop_name:
+    # Class "si3CNdiG8AR0EaXvf6bFbQ==" HANYA ada di shop_name
+    # shop_location tidak punya class ini — ini adalah pembeda yang reliable
+    css: "span[class*='si3CNdiG8']"
+    attribute: "text"
+    type: "string"
+
+  shop_location:
+    # Tidak punya class unik — pakai kombinasi: punya "flip" tapi TIDAK punya "si3CNdiG8"
+    # CSS murni tidak bisa :not() dengan class partial, jadi pakai urutan
+    # span kedua di dalam div "_1yoE8Ml3qwvn"
+    css: "div[class*='_1yoE8Ml3'] span:last-child"
+    attribute: "text"
+    type: "string"
+
+# ====================================================================
+# 2. DERIVED FIELDS
+# ====================================================================
+derived_fields:
+
+  product_unique_id:
+    source: "bronze_root_field"
+    key: "id"
+    type: "string"
+    required: true
+
+  product_url:
+    source: "url_array_index_0"
+    type: "string"
+    is_url: true
+
+  price_number:
+    source: "transformation_clean_digits"
+    depends_on: "price_raw"
+    type: "integer"
+    clean_regex: "[^\\d]"
+
+  original_price_number:
+    source: "transformation_clean_digits_ori"
+    depends_on: "original_price_raw"
+    type: "integer"
+    clean_regex: "[^\\d]"
+    default_value: null
+
+  items_sold_number:
+    source: "transformation_extract_number"
+    depends_on: "items_sold_raw"
+    type: "integer"
+    clean_regex: "(\\d+)"
+    default_value: 0
+
+  search_keyword:
+    source: "url_query_param"
+    parent_key: "extParam"
+    child_key: "keyword"
+    type: "string"
+
+  search_id:
+    source: "url_query_param"
+    parent_key: "extParam"
+    child_key: "search_id"
+    type: "string"
+
+  source_param:
+    source: "url_query_param"
+    parent_key: "extParam"
+    child_key: "src"
+    type: "string"
+
+  scraped_at:
+    source: "bronze_root_field"
+    key: "scraped_at"
+    type: "datetime"
+
+# ====================================================================
+# 3. DATA QUALITY
+# ====================================================================
+data_quality_rules:
+  primary_key: "product_unique_id"
+  required_fields:
+    - "product_unique_id"
+    - "product_name"
+    - "price_number"
+  drop_duplicates: true
+  drop_if_null:
+    - "product_name"
+    - "price_raw"
