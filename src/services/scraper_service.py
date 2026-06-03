@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timezone
 from src.models.database import DatabaseManager, ScrapingJob
 from src.ace import ScrapingOrchestrator
-from utils.utils import RandomUtils as Utils
+from src.utils.utils import RandomUtils as Utils
 import time
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +21,9 @@ class ScraperService:
         self.db = DatabaseManager()
         self.utils = Utils()
         self.running_jobs = {}  # Track running jobs for stopping
-        self.utcnow = datetime.now(timezone.utc)
+        self._browser_pool = []          # list kosong, siap diisi browser
+        self._browser_pool_size = 2      # maksimal 2 browser aktif sekaligus
+        self._browser_lock = asyncio.Lock()  # kunci agar pool aman diakses bersamaan
 
         # Session statistics for monitoring
         self.session_stats = {
@@ -52,7 +54,7 @@ class ScraperService:
             'site': site,
             'query': query,
             'max_pages': max_pages,
-            'start_time': self.utcnow
+            'start_time': datetime.now(timezone.utc)
         }
         
         return job_id
@@ -68,7 +70,7 @@ class ScraperService:
             # Initialize ScrapingOrchestrator
             try:
                 orchestrator = ScrapingOrchestrator()
-                if not orchestrator.setup_browser(self, headless=False, use_profile=True):
+                if not orchestrator.setup_browser(headless=False, use_profile=True):
                     raise Exception("Browser setup failed")
                 logger.info(f"ScrapingOrchestrator initialized successfully for job {job_id}")
             except Exception as e:
@@ -127,7 +129,7 @@ class ScraperService:
             self.db.update_job_status(
                 job_id, 
                 'completed', 
-                completed_at=self.utcnow,
+                completed_at=datetime.now(timezone.utc),
                 total_pages=page,
                 products_found=len(all_products)
             )
@@ -142,7 +144,7 @@ class ScraperService:
             self.db.update_job_status(
                 job_id, 
                 'cancelled', 
-                completed_at=self.utcnow,
+                completed_at=datetime.now(timezone.utc),
                 error_message="Job was cancelled by user"
             )
             self.session_stats['failed_jobs'] += 1
@@ -152,7 +154,7 @@ class ScraperService:
                 job_id, 
                 'failed', 
                 error_message=str(e),
-                completed_at=self.utcnow,
+                completed_at=datetime.now(timezone.utc),
                 total_pages=page
             )
             self.session_stats['failed_jobs'] += 1
@@ -204,7 +206,7 @@ class ScraperService:
             self.db.update_job_status(
                 job_id, 
                 'stopped', 
-                completed_at=self.utcnow,
+                completed_at=datetime.now(timezone.utc),
                 error_message="Job stopped by user"
             )
             
