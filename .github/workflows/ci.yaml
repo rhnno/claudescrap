@@ -27,7 +27,7 @@ jobs:
 
       - name: Security check - CVE scan (dependencies)
         run: |
-          safety check -r requirements.txt
+          safety scan -r requirements.txt
 
       - name: Security check - Static analysis (code)
         run: |
