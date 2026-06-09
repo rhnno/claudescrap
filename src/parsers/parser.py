@@ -26,7 +26,7 @@ def _load_config(config_path: str = "config/selector.yaml") -> Dict:
     with open(config_path, "r", encoding='utf-8') as f:
         return yaml.safe_load(f)
     
-def load_bronze(file_path: str, config: Dict) -> List[Dict]:
+def load_bronze(file_path: str) -> List[Dict]:
     """ 
     We do preparation here to call json file from bronze-level.
     Also make sure _extract_html() and _transform_derived() do their things
@@ -36,58 +36,49 @@ def load_bronze(file_path: str, config: Dict) -> List[Dict]:
         with open(file_path, 'r', encoding='utf-8') as f:
             bronze_data = json.load(f)
     except Exception as e:
-        print("[Parser] Error reading file {file_path}: {e}")
+        print(f"[Parser] Error reading file {file_path}: {e}")
         return []
     
-    if isinstance(bronze_data, Dict):
+    if isinstance(bronze_data, dict):
         bronze_data = [bronze_data]
 
     return bronze_data
 
-def _extract_html(bronze_data, config: Dict ) -> List[Dict]:
+def _extract_html(raw_html: str, html_extractions: Dict) -> Dict:
     """
     we process config here to be more readable, and do the extraction here.
     keep it clean simple.
     """
-    container_fields    = config.get('container_fields', 'raw_cards')
-    html_extractions    = config.get('html_extraction', {})
-    derived_fields = config.get('derived_fields', {})
     
-    for record in bronze_data:
-        raw_html = record.get(container_fields)
-        if not raw_html:
-            print(f"    [Parser] Field '{container_fields}' Not found in the record."
-                  f"Keys appear: {list(record.keys())}")
-            continue
 
-        soup = BeautifulSoup(raw_html, 'html.parser')
-        extracted = {}
+    soup = BeautifulSoup(raw_html, 'html.parser')
+    extracted = {}
 
-        # do extraction here
-        for field, rules in html_extractions.items():
-            css         = rules.get('css')
-            fall_css    = rules.get('fallback_css')
-            attr        = rules.get('attribute', 'text')
-            fall_attr   = rules.get('fallback_attribute', 'alt') 
+    # do extraction here
+    for field, rules in html_extractions.items():
+        css         = rules.get('css')
+        fall_css    = rules.get('fallback_css')
+        attr        = rules.get('attribute', 'text')
+        fall_attr   = rules.get('fallback_attribute', 'alt') 
 
-            #We only take one element from css cause the list only contain one at the time
-            element = soup.select_one(css)
-            val = None
+        #We only take one element from css cause the list only contain one at the time
+        element = soup.select_one(css)
+        val = None
 
+        if element:
+            val = element.get_text(strip=True) if attr == 'text' else element.get(attr)
+
+        if not val and fall_css:
+            element = soup.select_one(fall_css)
+            attr = fall_attr or attr
             if element:
                 val = element.get_text(strip=True) if attr == 'text' else element.get(attr)
-
-            if not val and fall_css:
-                element = soup.select_one(fall_css)
-                attr = fall_attr or attr
-                if element:
-                    val = element.get_text(strip=True) if attr == 'text' else element.get(attr)
             
-            if not val:
-                extracted[field] = rules.get('default_value')
-                continue
+        if not val:
+            extracted[field] = rules.get('default_value')
+            continue
 
-            extracted[field] = val
+        extracted[field] = val
 
     return extracted
 
@@ -113,7 +104,7 @@ def _transform_derived(record, extracted, derived_fields) -> Dict:
             if val:
                 silver[field] = int(re.sub(rules.get('clean_regex'), '', str(val)))
             else:
-                silver[field] = rules.get('default_value')
+                silver[field] = rules.get('default_value', 0)
         
         elif source == 'transformation_extract_number' and rules.get('depends_on'):
             val = extracted.get(rules.get('depends_on'))
@@ -133,18 +124,37 @@ def _transform_derived(record, extracted, derived_fields) -> Dict:
 
     return silver
 
-def _validate_record(record: Dict,silver: Dict,data_quality_rules: List) -> Any:
+def _validate_record(record: Dict,silver: Dict,data_quality_rules: Dict) -> Any:
     """ validate record data by rules from data_quality_rules on selector.yaml"""
     # rules from required_fields yaml
     req = data_quality_rules.get('required_fields', [])
     # rules from drop_if_null yaml
     null = data_quality_rules.get('drop_if_null', [])
     for field in req:
-        if source:
-            val = silver.get(rules.get('required_fields'))
-            if val:
-                
+        val = silver.get(field)
 
+        if not val:
+            print(f"    [Parser] Validation failed for field '{field}' with value '{val}' in record with url: {record.get('url', [])}")
+            return None
+        
+    for field in null:
+        val = silver.get(field)
+        if val is None or val == '':
+            print(f"    [Parser] Validation failed for field '{field}' with value 'None' in record with url: {record.get('url', [])}")
+            return None
+        
+    
+    return True
+
+def process_record(record: Dict,config: Dict):
+    raw_html = record.get(config['container_fields'])
+    extracted = _extract_html(raw_html, config['html_extractions'])
+    silver = _transform_derived(record, extracted, config['derived_fields'])
+    
+    if not _validate_record(record, silver, config['data_quality_rules']):
+        return None
+    
+    return silver
 
 def _extract_query_param(record: Dict, rules: Dict) -> Any:
     """Helper to parse nested query parameter, much more clean if we make it here"""
