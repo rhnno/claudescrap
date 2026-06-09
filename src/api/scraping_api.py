@@ -25,7 +25,7 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=["mydomain.example", "lo
 
 # Security
 security = HTTPBearer()
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "test-secret-123")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "test-secret-123") # secret key ALERT!!!!!!!!!!!!!!! need to change in production, this only for testing purpose, USE .env variable later on
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
