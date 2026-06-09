@@ -79,6 +79,12 @@ def _extract_html(raw_html: str, html_extractions: Dict) -> Dict:
             continue
 
         extracted[field] = val
+        field_type = rules.get('type')
+        if field_type == 'float' and val:
+            try:
+                extracted[field] = float(val)
+            except ValueError:
+                extracted[field] = rules.get('default_value')
 
     return extracted
 
