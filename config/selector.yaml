@@ -1,7 +1,7 @@
 pipeline_name: "tokopedia_bronze_to_silver"
 source_layer: "bronze"
 target_layer: "silver"
-container_field: "raw_cards"
+container_fields: "raw_cards"
 
 # ====================================================================
 # 1. HTML EXTRACTIONS
