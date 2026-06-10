@@ -58,5 +58,7 @@ acli.exe
 # Temporary Files
 tmp_*
 temp_*
-data/raw/reviews.csv
+data/
 acli.exe
+*.db
+chrome_profiles/research_profile/

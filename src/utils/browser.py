@@ -4,6 +4,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 import time
 import os
 import json
@@ -22,7 +24,7 @@ class BrowserManager:
         self.credentials_file = "config/login_credentials.json"
     
     def _get_profile_path(self):
-        """Get the path for Chrome profile"""
+        """Get the path from chrome_profiles folder for the given profile name"""
         profile_dir = Path("chrome_profiles")
         profile_dir.mkdir(exist_ok=True)
         return profile_dir / self.profile_name
@@ -86,13 +88,8 @@ class BrowserManager:
         # Enhanced stealth options
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--no-sandbox')
-        options.add_argument('--disable-gpu')
-        options.add_argument("--remote-debugging-port=9222")
-        options.add_argument("--remote-debugging-address=0.0.0.0")
         options.add_argument('--disable-extensions')
         options.add_argument('--disable-plugins')
-        options.add_argument('--disable-images')  # Faster loading
-        options.add_argument('--disable-javascript')  # Can be removed if JS is needed
         
         # Rotate user agents for better stealth
         user_agents = [
@@ -112,9 +109,6 @@ class BrowserManager:
                 "notifications": 2,  # Block notifications
                 "geolocation": 2,    # Block location requests
                 "media_stream": 2,   # Block camera/mic
-            },
-            "profile.managed_default_content_settings": {
-                "images": 2  # Block images for faster loading
             }
         }
         options.add_experimental_option("prefs", prefs)
@@ -139,6 +133,23 @@ class BrowserManager:
         """Navigate to a URL and wait for page load"""
         self.driver.get(url)
         return self.wait_for_page_load()
+    
+    def human_navigation_trick(self) -> None:
+        import time
+        try:
+            # Back via JavaScript
+            print('  → Back...')
+            self.driver.execute_script('window.history.back()')
+            time.sleep(0.5)
+            
+            # Forward via JavaScript  
+            print('  → Forward...')
+            self.driver.execute_script('window.history.forward()')
+            time.sleep(1)
+            print('  ✔ Navigation trick selesai')
+            
+        except Exception as e:
+            print(f'  ⚠ Navigation trick gagal: {e}')
     
     def wait_for_page_load(self, timeout=5):
         """Wait for page to fully load with reduced timing"""
@@ -174,11 +185,11 @@ class BrowserManager:
             elif site_name == 'bukalapak':
                 return self._login_bukalapak(site_creds)
             else:
-                print(f"❌ Auto-login not implemented for {site_name}")
+                print(f" [Browser] Auto-login not implemented for {site_name}")
                 return False
                 
         except Exception as e:
-            print(f"❌ Auto-login failed for {site_name}: {e}")
+            print(f" [Browser] Auto-login failed for {site_name}: {e}")
             return False
     
     def _login_tokopedia(self, creds):
@@ -217,14 +228,14 @@ class BrowserManager:
                 )
             )
             
-            print("✅ Tokopedia login successful")
+            print(" [Browser] Tokopedia login successful")
             return True
             
         except TimeoutException:
-            print("⚠️ Tokopedia login timeout - may need manual intervention")
+            print(" [Browser] Tokopedia login timeout - may need manual intervention")
             return False
         except Exception as e:
-            print(f"❌ Tokopedia login error: {e}")
+            print(f" [Browser] Tokopedia login error: {e}")
             return False
     
     def _login_shopee(self, creds):
@@ -256,14 +267,14 @@ class BrowserManager:
                 )
             )
             
-            print("✅ Shopee login successful")
+            print("[Browser] Shopee login successful")
             return True
             
         except TimeoutException:
-            print("⚠️ Shopee login timeout - may need manual intervention")
+            print(" [Browser] Shopee login timeout - may need manual intervention")
             return False
         except Exception as e:
-            print(f"❌ Shopee login error: {e}")
+            print(f" [Browser] Shopee login error: {e}")
             return False
     
     def _login_bukalapak(self, creds):
@@ -295,16 +306,58 @@ class BrowserManager:
                 )
             )
             
-            print("✅ Bukalapak login successful")
+            print(" [Browser] Bukalapak login successful")
             return True
             
         except TimeoutException:
-            print("⚠️ Bukalapak login timeout - may need manual intervention")
+            print(" [Browser] Bukalapak login timeout - may need manual intervention")
             return False
         except Exception as e:
-            print(f"❌ Bukalapak login error: {e}")
+            print(f" [Browser] Bukalapak login error: {e}")
             return False
-    
+        
+    def save_cookies(self, filepath: str = "condig/tokopedia_cookies.json") -> bool:
+        """save cookies after manually login"""
+        try:
+            cookies = self.driver.get_cookies()
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            with open(filepath, 'w') as f:
+                json.dump(cookies, f)
+            print(f" [Browser] Cookies saved: {len(cookies)} cookies")
+            return True
+        except Exception as e:
+            print(f" [Browser] Failed to save cookies: {e}")
+            return False
+        
+    def load_cookies(self, filepath: str = "config/tokopedia_cookies.json") -> bool:
+        """Load Cookies from saved json file -- must be navigated into domain first before load"""
+        try:
+            if not os.path.exists(filepath):
+                print(" [Browser] Cookie files not found")
+                return False
+        
+            self.driver.get("https://www.tokopedia.com")
+            import time
+            time.sleep(2)
+        
+            with open(filepath, 'r') as f:
+                cookies = json.load(f)
+
+            for cookie in cookies:
+                # remove non compatible key ;to be honest idk why;
+                cookie.pop('sameSite', None)
+                cookie.pop('expiry', None)
+                try:
+                    self.driver.add_cookie(cookie)
+                except Exception:
+                    continue
+            
+            print(f"✅ Loaded cookie : {len(cookies)} cookies")
+            return True
+        except Exception as e:
+            print(f" [Browser] Failed to load cookie: {e}")
+            return False
+        
     def check_login_status(self, site_name):
         """Check if already logged in to a site"""
         try:
@@ -342,23 +395,23 @@ class BrowserManager:
                 except:
                     continue
             
-            print(f"❌ Not logged in to {site_name}")
+            print(f"[Browser] Not logged in to {site_name}")
             return False
             
         except Exception as e:
-            print(f"⚠️ Error checking login status for {site_name}: {e}")
+            print(f"[Browser] Error checking login status for {site_name}: {e}")
             return False
     
     def ensure_login(self, site_name):
         """Ensure user is logged in to the specified site"""
         if not self.check_login_status(site_name):
-            print(f"🔐 Need to login to {site_name}")
+            print(f"[Browser] Need to login to {site_name}")
             return self.auto_login(site_name)
         return True
     
     def close(self):
         """Close the browser"""
         if self.driver:
-            print("🔧 Closing browser and saving profile...")
+            print(" [Browser] Closing browser and saving profile...")
             self.driver.quit()
 
