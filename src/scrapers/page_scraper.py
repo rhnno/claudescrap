@@ -213,7 +213,7 @@ class PageScraper:
             html_content = self.browser.driver.page_source
 
             # Buat hash pendek dari URL untuk uniqueness
-            url_hash = hashlib.md5(url.encode()).hexdigest()[:6]
+            url_hash = hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()[:6]
             query_slug = self.query.replace(" ", "_").lower()
             filename = f"{query_slug}_page_{page_number:03d}_{url_hash}.html"
             filepath = os.path.join(self.output_dir, filename)

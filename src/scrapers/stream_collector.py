@@ -334,7 +334,7 @@ class StreamCollector:
             parsed_url = urlparse(url)
             # .path will immediatly grab "/toko-abc/produk-xyz" after /
             clean = parsed_url.path.strip("/")
-            url_hash = hashlib.md5(clean.encode()).hexdigest()[:8]
+            url_hash = hashlib.md5(clean.encode(), usedforsecurity=False).hexdigest()[:8]
             return url_hash
         except Exception:
             # Fallback to raw url if parsing failed
